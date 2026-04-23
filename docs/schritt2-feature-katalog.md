@@ -7,7 +7,7 @@ Schema pro Feature: **Anwendungsfälle (User Stories nach Cohn) · Geschäftsnut
 
 **Verwandte Artefakte:**
 
-- 📐 Domänenmodell (DDD-Klassendiagramm): [domaenenmodell.puml](domaenenmodell.puml)
+- 📐 Domänenmodell (DDD-Klassendiagramm): [diagrams/domaenenmodell.puml](diagrams/domaenenmodell.puml)
 - 🖥️ Interaktives HTML-Mockup: [mockups/index.html](mockups/index.html)
 
 **Domänenmodell:**

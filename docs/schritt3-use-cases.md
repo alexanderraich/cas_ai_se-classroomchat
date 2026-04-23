@@ -8,7 +8,7 @@ Im Anschluss: konsolidierte Liste **funktionaler Anforderungen** (FA-x), eindeut
 
 ![Use-Case-Übersicht](diagrams/use-case-diagramm.png)
 
-> Quelle: [use-case-diagramm.puml](use-case-diagramm.puml)
+> Quelle: [diagrams/use-case-diagramm.puml](diagrams/use-case-diagramm.puml)
 
 ---
 

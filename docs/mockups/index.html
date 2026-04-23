@@ -7,14 +7,34 @@
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="app">
+
+<!-- Login-Overlay (UC-1: Anzeigename festlegen) -->
+<section class="onboarding" id="loginOverlay">
+  <div class="card">
+    <h1>Willkommen im Classroom Chat</h1>
+    <p>Wähle einen Anzeigenamen — keine Registrierung nötig.</p>
+    <form onsubmit="event.preventDefault(); login();">
+      <div class="field">
+        <label for="loginName">Anzeigename</label>
+        <input id="loginName" type="text" placeholder="z. B. Mira" maxlength="32" autofocus />
+      </div>
+      <button type="submit">Loslegen</button>
+      <div class="hint">1–32 Zeichen.</div>
+    </form>
+  </div>
+</section>
+
+<div class="app" id="appShell" style="display:none;">
   <aside class="sidebar">
     <header>
       <span class="brand">Classroom Chat</span>
     </header>
-    <div class="me" style="padding: 10px 16px; border-bottom: 1px solid var(--border);">
-      <span class="avatar">M</span>
-      <span>Mira</span>
+    <div class="me" style="padding: 10px 16px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span class="avatar" id="meAvatar">M</span>
+        <span id="meName">Mira</span>
+      </span>
+      <button class="icon" title="Abmelden" onclick="logout()">↪</button>
     </div>
     <nav class="group-list" id="groupList">
       <div class="group active" data-id="g1">
@@ -111,6 +131,33 @@
 <script>
   // === Mock-State ===
   const ME = { name: 'Mira', initial: 'M', color: '#22c55e' };
+
+  // === Login / Logout (UC-1) ===
+  function login() {
+    const input = document.getElementById('loginName');
+    const name = input.value.trim();
+    if (!name || name.length > 32) { input.focus(); return; }
+    ME.name = name;
+    ME.initial = name[0].toUpperCase();
+    // Replace placeholder 'Mira' in sample data with the chosen name
+    Object.values(sampleGroups).forEach(g => {
+      g.members = g.members.map(m => m === 'Mira' ? ME.name : m);
+      g.messages.forEach(m => { if (m.author === 'Mira') m.author = ME.name; });
+    });
+    document.getElementById('meName').textContent = name;
+    document.getElementById('meAvatar').textContent = ME.initial;
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appShell').style.display = 'grid';
+    renderSidebar();
+    renderHeader();
+    renderFeed();
+  }
+  function logout() {
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'flex';
+    document.getElementById('loginName').value = '';
+    document.getElementById('loginName').focus();
+  }
 
   const sampleGroups = {
     g1: {
@@ -220,7 +267,7 @@
     renderFeed();
   }
 
-  // Initial render
+  // Initial render (App-Shell ist bis zum Login ausgeblendet)
   renderSidebar();
   renderHeader();
   renderFeed();
