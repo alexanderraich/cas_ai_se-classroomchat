@@ -108,6 +108,33 @@
               .then(function (r) { inp.value = ''; if (r.url) location.href = r.url; });
           });
         }
+        // Rename: fetch + Sidebar/Header sofort aktualisieren.
+        var rnForm = document.getElementById('rename-form');
+        if (rnForm) {
+          rnForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var inp = rnForm.querySelector('input[name="name"]');
+            var name = inp.value.trim();
+            if (!name) return;
+            var fd = new FormData(); fd.append('name', name);
+            fetch(rnForm.action, {method: 'POST', body: fd, credentials: 'same-origin'})
+              .then(function () {
+                // Settings-Dropdown schließen, dann State neu laden.
+                var d = rnForm.closest('details'); if (d) d.removeAttribute('open');
+                tick();
+              });
+          });
+        }
+        // Löschen: fetch + zur Startseite navigieren (Redirect folgen).
+        var dlForm = document.getElementById('delete-form');
+        if (dlForm) {
+          dlForm.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            if (!confirm('Gruppe wirklich löschen?')) return;
+            fetch(dlForm.action, {method: 'POST', credentials: 'same-origin'})
+              .then(function (r) { location.href = r.url || '/'; });
+          });
+        }
       });
     })();
   </script>
@@ -168,15 +195,14 @@
               <span class="secondary" style="display:inline-block; padding:8px 14px; border:1px solid var(--border); border-radius:8px; background:white;">Einstellungen</span>
             </summary>
             <div style="position:absolute; right:0; top:42px; background:white; border:1px solid var(--border); border-radius:8px; padding:16px; width:340px; box-shadow:var(--shadow); z-index:10;">
-              <form method="post" action="{{ url_for('rename_group', gid=gid) }}" style="margin-bottom:12px;">
+              <form id="rename-form" method="post" action="{{ url_for('rename_group', gid=gid) }}" style="margin-bottom:12px;">
                 <label class="field"><span style="font-size:12px; color:var(--muted);">Name umbenennen</span></label>
                 <div style="display:flex; gap:6px;">
                   <input name="name" type="text" value="{{ grp.name }}" maxlength="64" required style="flex:1;" />
                   <button type="submit">Speichern</button>
                 </div>
               </form>
-              <form method="post" action="{{ url_for('delete_group', gid=gid) }}"
-                    onsubmit="return confirm('Gruppe „{{ grp.name }}“ wirklich löschen?');" style="margin:0;">
+              <form id="delete-form" method="post" action="{{ url_for('delete_group', gid=gid) }}" style="margin:0;">
                 <button class="danger" type="submit" style="width:100%;">Gruppe löschen</button>
               </form>
             </div>
