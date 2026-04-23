@@ -20,8 +20,10 @@ app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 
 # === In-Memory-Store (FA-16) ===
 # users:    user_id -> {"name": str}
-# groups:   group_id -> {"name": str, "owner_id": str, "members": set[str]}
+# groups:   group_id -> {"name": str, "owner_id": str}
 # messages: group_id -> list[{"id", "author_id", "author_name", "text", "created_at"}]
+# Open-Membership-Modell (TRL4): keine explizite Mitgliederliste pro Gruppe —
+# jeder eingeloggte Benutzer sieht jede Gruppe.
 users: dict[str, dict] = {}
 groups: dict[str, dict] = {}
 messages: dict[str, list[dict]] = {}
@@ -144,9 +146,7 @@ def logout():
 def create_group():
     name = validate_groupname(request.form.get("name", ""))
     gid = str(uuid.uuid4())
-    # Open-Membership: members-Set bleibt aus Kompatibilitätsgründen,
-    # wird aber nicht mehr für Sichtbarkeitsprüfungen genutzt.
-    groups[gid] = {"name": name, "owner_id": g.uid, "members": {g.uid}}
+    groups[gid] = {"name": name, "owner_id": g.uid}
     messages[gid] = []
     return redirect(url_for("group_view", gid=gid))
 
@@ -192,30 +192,6 @@ def rename_group(gid):
     return redirect(url_for("group_view", gid=gid))
 
 
-@app.post("/g/<gid>/members")
-@require_login
-@require_owner
-def add_member(gid):
-    name = validate_name(request.form.get("name", ""))
-    # Find or create user (TRL4-Vereinfachung: Mitglied wird angelegt, falls noch nicht vorhanden)
-    target_uid = next((uid for uid, u in users.items() if u["name"].lower() == name.lower()), None)
-    if target_uid is None:
-        target_uid = str(uuid.uuid4())
-        users[target_uid] = {"name": name}
-    groups[gid]["members"].add(target_uid)
-    return redirect(url_for("group_view", gid=gid))
-
-
-@app.post("/g/<gid>/members/<target_uid>/remove")
-@require_login
-@require_owner
-def remove_member(gid, target_uid):
-    if target_uid == groups[gid]["owner_id"]:
-        abort(400, "Eigentümer kann sich nicht selbst entfernen.")
-    groups[gid]["members"].discard(target_uid)
-    return redirect(url_for("group_view", gid=gid))
-
-
 @app.post("/g/<gid>/delete")
 @require_login
 @require_owner
@@ -247,7 +223,12 @@ def group_state(gid):
             for m in messages.get(gid, [])
         ],
         "groups": [
-            {"gid": gid_, "name": grp_["name"], "active": gid_ == gid}
+            {
+                "gid": gid_,
+                "name": grp_["name"],
+                "active": gid_ == gid,
+                "msg_count": len(messages.get(gid_, [])),
+            }
             for gid_, grp_ in all_groups_sorted()
         ],
         "users": [

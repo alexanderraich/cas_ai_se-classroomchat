@@ -18,9 +18,22 @@
       function renderGroups(list) {
         var nav = document.getElementById('group-list');
         if (!nav) return;
+        var seen = loadSeen();
         nav.innerHTML = list.map(function (g) {
-          return '<a class="group ' + (g.active ? 'active' : '') + '" href="/g/' + g.gid + '" style="text-decoration:none;"><span># ' + esc(g.name) + '</span></a>';
+          var unread = Math.max(0, (g.msg_count || 0) - (seen[g.gid] || 0));
+          // Aktive Gruppe: "Gesehen" sofort hochsetzen, kein Badge.
+          if (g.active) { seen[g.gid] = g.msg_count || 0; unread = 0; }
+          var badge = unread > 0 ? '<span class="badge">' + unread + '</span>' : '';
+          return '<a class="group ' + (g.active ? 'active' : '') + '" href="/g/' + g.gid + '" style="text-decoration:none;"><span># ' + esc(g.name) + '</span>' + badge + '</a>';
         }).join('');
+        saveSeen(seen);
+      }
+
+      function loadSeen() {
+        try { return JSON.parse(localStorage.getItem('cc_seen') || '{}'); } catch (e) { return {}; }
+      }
+      function saveSeen(s) {
+        try { localStorage.setItem('cc_seen', JSON.stringify(s)); } catch (e) {}
       }
 
       function renderUsers(list) {
@@ -85,9 +98,16 @@
       document.addEventListener('DOMContentLoaded', function () {
         var form = document.getElementById('composer-form');
         if (form) {
+          var ta = form.querySelector('textarea');
+          // Enter sendet, Shift+Enter fügt Zeilenumbruch ein.
+          ta.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing) {
+              ev.preventDefault();
+              form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', {cancelable: true}));
+            }
+          });
           form.addEventListener('submit', function (ev) {
             ev.preventDefault();
-            var ta = form.querySelector('textarea');
             var text = ta.value.trim();
             if (!text) return;
             var fd = new FormData(); fd.append('text', text);

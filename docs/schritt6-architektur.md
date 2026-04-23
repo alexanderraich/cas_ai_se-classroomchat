@@ -6,32 +6,31 @@ Web-basierter Klassenraum-Messenger als TRL4-Prototyp. Nutzer melden sich mit ei
 
 ## Components
 
-- **Browser-UI** — server-gerenderte HTML-Seiten (Jinja2-Templates), kein JS-Framework.
-- **Flask-App** — HTTP-Routen für Login, Gruppen, Mitglieder, Nachrichten.
+- **Browser-UI** — server-gerenderte Jinja2-Templates plus inline Vanilla-JavaScript für Live-Updates (Polling auf JSON-Endpoint, DOM-Patches statt Full-Reload).
+- **Flask-App** — HTTP-Routen für Login, Gruppen, Nachrichten und ein JSON-State-Endpoint.
 - **In-Memory-Store** — Python-Dicts für `users`, `groups`, `messages` im Prozess­speicher.
 
 ## Endpoints
 
-| Methode | Pfad                              | Zweck                        | Use Case |
-| ------- | --------------------------------- | ---------------------------- | -------- |
-| GET     | `/`                               | Login-Form ODER Gruppensicht | UC-1, UC-7 (implizit) |
-| POST    | `/login`                          | Anzeigenamen setzen          | UC-1     |
-| POST    | `/logout`                         | Sitzung beenden              | —        |
-| POST    | `/groups`                         | Gruppe erstellen             | UC-2     |
-| GET     | `/g/<gid>`                        | Gruppen-Feed anzeigen        | UC-7, UC-8 |
-| POST    | `/g/<gid>/messages`               | Nachricht senden             | UC-8     |
-| POST    | `/g/<gid>/rename`                 | Gruppe umbenennen            | UC-3     |
-| POST    | `/g/<gid>/members`                | Mitglied hinzufügen          | UC-4     |
-| POST    | `/g/<gid>/members/<name>/remove`  | Mitglied entfernen           | UC-5     |
-| POST    | `/g/<gid>/delete`                 | Gruppe löschen               | UC-6     |
+| Methode | Pfad                          | Zweck                                                                  | Use Case / FA |
+| ------- | ----------------------------- | ---------------------------------------------------------------------- | ------------- |
+| GET     | `/`                           | Login-Form ODER Redirect in die erste Gruppe                           | UC-1, UC-7    |
+| POST    | `/login`                      | Anzeigenamen setzen (re-uses existing user by name)                    | UC-1          |
+| POST    | `/logout`                     | Sitzung beenden                                                        | —             |
+| POST    | `/groups`                     | Gruppe erstellen, Eigentümer = aktueller Benutzer                      | UC-2          |
+| GET     | `/g/<gid>`                    | HTML-Initial-Render (Sidebar, Feed, Composer)                          | UC-7, UC-8    |
+| GET     | `/g/<gid>/state.json`         | JSON-Snapshot (Gruppen, Benutzer, Nachrichten) für Polling             | UC-9, FA-21/22|
+| POST    | `/g/<gid>/messages`           | Nachricht senden (per `fetch`, kein Redirect)                          | UC-8          |
+| POST    | `/g/<gid>/rename`             | Gruppe umbenennen                                                      | UC-3          |
+| POST    | `/g/<gid>/delete`             | Gruppe löschen                                                         | UC-6          |
 
 ## Stack
 
 - **Python 3.11+**
-- **Flask** (Server + Templating)
-- **Gunicorn** (WSGI-Server in Render)
-- HTML/CSS (kein JS-Build)
-- **Render Web Service** (Hosting)
+- **Flask** (Server + Templating + JSON via `jsonify`)
+- **Gunicorn** (WSGI-Server in Render, `--workers 1 --threads 4 --timeout 60`)
+- HTML/CSS + Vanilla JavaScript (kein Build-Tool, kein Framework)
+- **Render Web Service** (Hosting, Free Plan)
 
 ## Files
 
@@ -54,34 +53,47 @@ README.md                  # Quickstart
 - **Start command:** `gunicorn app:app`
 - **Repo → Render**: Render-Account mit GitHub verknüpfen, neuen *Web Service* anlegen, Repo wählen, `render.yaml` wird automatisch erkannt.
 
+## Live-Update-Konzept (UC-9 / F5)
+
+Der Browser ruft alle 2 s den JSON-Endpoint `GET /g/<gid>/state.json` auf und tauscht nur geänderte DOM-Bereiche aus (Sidebar, Benutzerliste, Feed). Vorteile gegenüber `<meta http-equiv="refresh">` oder Full-Reload:
+
+- Composer-Fokus, eingegebener Text und Scroll-Position bleiben erhalten.
+- Kein Page-Flash bei jedem Tick.
+- Geringe Bandbreite (JSON «diff» statt komplettem HTML).
+
+Formulare (Senden, Neue-Gruppe, Rename, Delete) werden ebenfalls per `fetch` abgesetzt; nach erfolgreicher Antwort triggert der Client direkt einen `tick()` oder navigiert auf die Redirect-URL. Der Ungelesen-Zähler je Gruppe wird client-seitig in `localStorage` geführt (`cc_seen[gid] = msg_count`).
+
 ## Limitations (bewusst)
 
-- **Persistenz:** Gruppen, Mitgliedschaften und Nachrichten gehen bei Restart/Redeploy verloren (FA-16).
-- **Authentifizierung:** Nur Anzeigename via signiertem Cookie — Identitäts-Spoofing möglich.
-- **Concurrency:** Reine In-Memory-Dicts ohne Locks; bei Gunicorn mit > 1 Worker wäre Zustand pro Worker getrennt → wir starten mit `--workers=1`.
+- **Persistenz:** Gruppen, Benutzer und Nachrichten gehen bei Restart/Redeploy verloren (FA-16). Auf Render Free zusätzlich nach 15 min Idle (Cold-Start).
+- **Authentifizierung:** Nur Anzeigename via signiertem Cookie — Identitäts-Spoofing möglich. Open-Membership-Modell verzichtet bewusst auf Mitgliederverwaltung.
+- **Concurrency:** Reine In-Memory-Dicts ohne Locks; Gunicorn `--workers 1` zwingend, sonst hätte jeder Worker einen eigenen Zustand.
+- **Polling statt Push:** 2-Sekunden-Latenz; bei vielen Clients linear ansteigende Last. WebSocket/SSE wären der nächste Schritt jenseits TRL4.
 - **Skalierung:** Nicht für Produktion; nur Lernzweck (TRL4).
 
 ## Mapping Anforderungen → Implementation
 
-| FA      | Wo umgesetzt                                        |
-| ------- | --------------------------------------------------- |
-| FA-01   | `GET /` zeigt `login.html` ohne Cookie              |
-| FA-02   | Validierung in `validate_name()` (Länge 1–32)      |
-| FA-03   | `Flask-Session` (signed cookie)                     |
-| FA-04   | `POST /groups`                                      |
-| FA-05   | `validate_groupname()` (Länge 1–64)                |
-| FA-06   | `POST /g/<gid>/rename`                              |
-| FA-07   | `POST /g/<gid>/members`                             |
-| FA-08   | `POST /g/<gid>/members/<name>/remove`               |
-| FA-09   | `POST /g/<gid>/delete`                              |
-| FA-10   | `@require_owner`-Decorator                          |
-| FA-11   | Sidebar in `base.html`                              |
-| FA-12   | `POST /g/<gid>/messages`                            |
-| FA-13   | Template rendert Autor + UTC-Timestamp via `<time>` |
-| FA-14   | `validate_message()` (Länge 1–2000)                |
-| FA-15   | `messages[gid]` ist append-only Liste              |
-| FA-16   | Reine Modul-Variablen, keine DB                     |
-| FA-17   | `@require_member`-Decorator                         |
-| FA-18   | Jinja2 escaped per default                          |
-| FA-19   | Empty-State im Template                             |
-| FA-20   | `@require_login`-Decorator                          |
+| FA      | Wo umgesetzt                                                                |
+| ------- | --------------------------------------------------------------------------- |
+| FA-01   | `GET /` zeigt `login.html` ohne Cookie                                       |
+| FA-02   | `validate_name()` (Länge 1–32)                                              |
+| FA-03   | `Flask-Session` (signed cookie)                                              |
+| FA-04   | `POST /groups` — Open Membership: kein Mitglieder-Set nötig                  |
+| FA-05   | `validate_groupname()` (Länge 1–64)                                         |
+| FA-06   | `POST /g/<gid>/rename`                                                       |
+| FA-09   | `POST /g/<gid>/delete`                                                       |
+| FA-10   | `@require_owner`-Decorator                                                   |
+| FA-11   | `all_groups_sorted()` rendert in Sidebar; live aktualisiert via state.json   |
+| FA-12   | `POST /g/<gid>/messages` (per fetch)                                         |
+| FA-13   | Template + JS rendert Autor + UTC-ISO-Timestamp lokal formatiert             |
+| FA-14   | `validate_message()` (Länge 1–2000)                                         |
+| FA-15   | `messages[gid]` ist append-only Liste                                        |
+| FA-16   | Reine Modul-Variablen, keine DB                                              |
+| FA-17   | `@require_login` + `@require_member` (letzteres prüft nur Existenz)          |
+| FA-18   | Jinja2 escaped per default; Client-Render via `textContent`                  |
+| FA-19   | Empty-State im Template + im JS-Renderer                                     |
+| FA-20   | `@require_login`-Decorator                                                   |
+| FA-21   | `GET /g/<gid>/state.json` — `group_state()`                                  |
+| FA-22   | `state.json` enthält `msg_count` je Gruppe; Client berechnet Ungelesen-Diff  |
+| FA-23   | Composer-`keydown`-Handler im group.html `<script>`-Block                    |
+| FA-24   | `all_users_sorted()` in Sidebar; live aktualisiert via state.json            |

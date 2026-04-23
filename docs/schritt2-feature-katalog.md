@@ -31,34 +31,45 @@ Schema pro Feature: **Anwendungsfälle (User Stories nach Cohn) · Geschäftsnut
 ## F2 — Gruppenverwaltung
 
 - **Anwendungsfälle:**
-  - Als Benutzer möchte ich eine neue Gruppe erstellen, damit ich für ein Thema oder Team einen eigenen Kanal habe.
+  - Als Benutzer möchte ich eine neue Gruppe erstellen, damit für ein Thema oder Team ein eigener Kanal existiert.
   - Als Gruppen-Eigentümer möchte ich meine Gruppe umbenennen, damit der Name den tatsächlichen Zweck widerspiegelt.
-  - Als Gruppen-Eigentümer möchte ich Mitglieder hinzufügen oder entfernen, damit nur die richtigen Personen Zugriff auf die Konversation haben.
   - Als Gruppen-Eigentümer möchte ich meine Gruppe löschen, damit nicht mehr genutzte Kanäle die Übersicht nicht belasten.
 - **Geschäftsnutzen:** Eine Klasse kann sich ohne Admin selbst in Themen-/Team-Kanäle organisieren.
-- **Lösungsidee:** In-Memory-`gruppen`-Dict mit Schlüssel `group_id` und Inhalt `{name, owner_id, mitglieder:set}`. Routen: `POST /groups`, `POST /groups/<id>/members`, `DELETE /groups/<id>/members/<uid>`, `DELETE /groups/<id>`. Server-seitige Prüfung: nur `owner_id == current_user`.
+- **Lösungsidee:** In-Memory-`gruppen`-Dict mit Schlüssel `group_id` und Inhalt `{name, owner_id}`. Routen: `POST /groups`, `POST /g/<id>/rename`, `POST /g/<id>/delete`. Server-seitige Prüfung: nur `owner_id == current_user` darf umbenennen/löschen.
 
-## F3 — Mitgliedschaft & Navigation
+## F3 — Sichtbarkeit & Navigation
 
 - **Anwendungsfälle:**
-  - Als Mitglied möchte ich eine Liste meiner Gruppen sehen, damit ich schnell den Überblick über meine Konversationen habe.
-  - Als Mitglied möchte ich zwischen meinen Gruppen wechseln können, damit ich gezielt die Nachrichten der gerade relevanten Gruppe lesen kann.
-- **Geschäftsnutzen:** Klare Trennung der Konversationen; Mitglieder sehen nur, was für sie relevant ist.
-- **Lösungsidee:** `GET /` rendert eine Seitenleiste aus `gruppen`, gefiltert nach Mitgliedschaft. Die aktive Gruppe ist ein Pfadparameter `/g/<id>`. Server-seitig gerenderte HTML-Seiten, vollständiger Reload — kein JS-Framework für TRL4 nötig.
+  - Als eingeloggter Benutzer möchte ich alle Gruppen in einer Seitenleiste sehen, damit ich ohne Einladung an jeder Konversation teilnehmen kann.
+  - Als eingeloggter Benutzer möchte ich zwischen Gruppen wechseln können, damit ich gezielt die Nachrichten der gerade relevanten Gruppe lesen kann.
+  - Als eingeloggter Benutzer möchte ich sehen, welche anderen Benutzer im System bekannt sind, damit ich weiß, mit wem ich potenziell chatten kann.
+- **Geschäftsnutzen:** TRL4-Vereinfachung **Open Membership**: in einer Klasse hat jeder Zugang zu jeder Gruppe — keine Einladungs-Bottlenecks. Die Sichtbarkeit aller Benutzer macht die Anwesenheit spürbar.
+- **Lösungsidee:** `GET /` rendert eine Seitenleiste aus `gruppen` (alle Gruppen, alphabetisch) und `users` (alle bekannten Benutzer). Die aktive Gruppe ist ein Pfadparameter `/g/<id>`.
 
 ## F4 — Nachricht senden
 
 - **Anwendungsfälle:**
-  - Als Mitglied einer Gruppe möchte ich eine Textnachricht schreiben und absenden, damit ich mit den anderen Mitgliedern kommunizieren kann.
-  - Als Mitglied möchte ich neben jeder Nachricht den Autor und den Zeitstempel sehen, damit ich den Verlauf der Konversation nachvollziehen kann.
+  - Als eingeloggter Benutzer möchte ich in einer Gruppe eine Textnachricht schreiben und absenden, damit ich mit den anderen Benutzern kommunizieren kann.
+  - Als eingeloggter Benutzer möchte ich neben jeder Nachricht den Autor und den Zeitstempel sehen, damit ich den Verlauf der Konversation nachvollziehen kann.
+  - Als eingeloggter Benutzer möchte ich mit der Enter-Taste senden können (Shift+Enter für Zeilenumbruch), damit der Chat-Flow ungebremst ist.
 - **Geschäftsnutzen:** Kernfunktion des Produkts — ermöglicht Konversation.
-- **Lösungsidee:** `POST /g/<id>/messages` mit Formularfeld `text`. Anhängen an die In-Memory-Liste `nachrichten[group_id]`. Redirect zurück auf `/g/<id>` (Post-Redirect-Get).
+- **Lösungsidee:** `POST /g/<id>/messages` mit Formularfeld `text`, gesendet via `fetch`. Anhängen an die In-Memory-Liste `nachrichten[group_id]`. Composer leert sich client-seitig, kein Full-Reload.
+
+## F5 — Live-Updates & Aktivitäts-Indikator
+
+- **Anwendungsfälle:**
+  - Als eingeloggter Benutzer möchte ich neue Nachrichten anderer Benutzer sehen, ohne die Seite manuell neu zu laden, damit der Chat sich anfühlt wie ein Echtzeit-Messenger.
+  - Als eingeloggter Benutzer möchte ich an einem Zähler neben dem Gruppennamen erkennen, in welchen Gruppen ungelesene Nachrichten vorliegen, damit ich diese gezielt öffnen kann.
+- **Geschäftsnutzen:** Erhöht die wahrgenommene Reaktivität und reduziert kognitiven Aufwand (welche Gruppe wurde aktualisiert?).
+- **Lösungsidee:** Browser pollt `GET /g/<id>/state.json` alle 2 s und tauscht nur DOM-Inhalte aus (Sidebar, Benutzerliste, Feed). Ungelesen-Zähler client-seitig via `localStorage` (pro Gruppe: zuletzt gesehene Anzahl). Komposer-Fokus und Scroll-Position bleiben erhalten.
 
 ---
 
 ## Bewusst nicht im MVP
 
+- Mitgliederverwaltung pro Gruppe (TRL4-Vereinfachung: **Open Membership** — alle eingeloggten Benutzer sehen alle Gruppen)
 - Antworten / Threads
-- Automatische Aktualisierung des Feeds (Auto-Refresh)
 - Bearbeiten / Löschen eigener Nachrichten
-- Anhänge, Reaktionen, Rollen, 1:1-DMs, Präsenz-/Tipp-/Lese-Indikatoren
+- Anhänge, Reaktionen, Rollen, 1:1-DMs
+- Tipp-/Lese-Indikatoren, echte Online-Präsenz (nur Liste bekannter Benutzer)
+- Echtzeit-Push (WebSocket / SSE) — stattdessen 2-Sekunden-Polling

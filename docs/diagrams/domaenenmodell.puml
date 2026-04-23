@@ -16,19 +16,13 @@ class Gruppe {
   +erstelltAm : DateTime
   --
   +umbenennen(neuerName)
-  +mitgliedHinzufuegen(benutzer)
-  +mitgliedEntfernen(benutzer)
+  +loeschen()
 }
 
 class Nachricht {
   +id : UUID
   +text : String
   +erstelltAm : DateTime
-  +bearbeitetAm : DateTime [0..1]
-  +geloescht : Boolean
-  --
-  +bearbeiten(neuerText)
-  +loeschen()
 }
 
 ' --- Beziehungen ---
@@ -36,19 +30,19 @@ class Nachricht {
 ' Eigentum: genau ein Eigentümer pro Gruppe; ein Eigentümer kann mehrere Gruppen besitzen
 Gruppe "0..*" --> "1" Benutzer : gehoertZu >
 
-' Mitgliedschaft: viele-zu-viele; ein Eigentümer ist implizit auch Mitglied
-Gruppe "0..*" -- "0..*" Benutzer : mitglieder
-
 ' Nachrichten gehören zu genau einer Gruppe und haben genau einen Autor
 Gruppe "1" <-- "0..*" Nachricht : enthaelt >
 Nachricht "0..*" --> "1" Benutzer : autor >
 
 note bottom of Gruppe
-  MVP-Vereinfachung: nur Textnachrichten,
-  keine Threads, keine Anhänge, keine Reaktionen,
-  keine Rollen, keine 1:1-DMs,
-  keine Präsenz-/Tipp-/Lese-Indikatoren,
-  keine automatische Aktualisierung.
+  TRL4-Vereinfachung (Open Membership):
+  jeder eingeloggte Benutzer sieht jede Gruppe und kann Nachrichten senden.
+  Es gibt keine explizite Mitgliedschaft mehr — nur den Eigentümer
+  (für Umbenennen/Löschen).
+
+  Live-Update: Browser pollt JSON-Endpoint alle 2 s.
+  Keine Threads, Anhänge, Reaktionen, Rollen, 1:1-DMs,
+  Präsenz-/Tipp-/Lese-Indikatoren.
 end note
 
 @enduml
