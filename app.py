@@ -64,15 +64,13 @@ def require_login(view):
 
 
 def require_member(view):
+    """TRL4-Vereinfachung: alle eingeloggten User sind in jeder Gruppe.
+    Wir prüfen nur, dass die Gruppe existiert."""
     @wraps(view)
     def wrapper(gid, *args, **kwargs):
-        grp = groups.get(gid)
-        if not grp:
-            # Gruppe existiert nicht (mehr) — z.B. nach Cold-Start (FA-16)
-            flash("Diese Gruppe existiert nicht mehr.")
+        if gid not in groups:
+            flash("Diese Gruppe existiert nicht (mehr).")
             return redirect(url_for("index"))
-        if g.uid not in grp["members"]:
-            abort(403)
         return view(gid, *args, **kwargs)
     return wrapper
 
@@ -91,11 +89,12 @@ def require_owner(view):
 
 
 # === Helpers ===
-def my_groups(uid: str) -> list[tuple[str, dict]]:
-    return sorted(
-        ((gid, grp) for gid, grp in groups.items() if uid in grp["members"]),
-        key=lambda kv: kv[1]["name"].lower(),
-    )
+def all_groups_sorted() -> list[tuple[str, dict]]:
+    return sorted(groups.items(), key=lambda kv: kv[1]["name"].lower())
+
+
+def all_users_sorted() -> list[tuple[str, str]]:
+    return sorted(((uid, u["name"]) for uid, u in users.items()), key=lambda x: x[1].lower())
 
 
 # === Routes ===
@@ -104,14 +103,15 @@ def index():
     uid = session.get("uid")
     if not uid or uid not in users:
         return render_template("login.html")
-    # Zur ersten eigenen Gruppe (oder Empty-Shell)
-    mine = my_groups(uid)
-    if mine:
-        return redirect(url_for("group_view", gid=mine[0][0]))
+    # Erste verfügbare Gruppe (oder Empty-Shell)
+    grps = all_groups_sorted()
+    if grps:
+        return redirect(url_for("group_view", gid=grps[0][0]))
     return render_template(
         "group.html",
         me=users[uid]["name"],
         my_groups=[],
+        all_users=all_users_sorted(),
         active=None,
         msgs=[],
     )
@@ -144,6 +144,8 @@ def logout():
 def create_group():
     name = validate_groupname(request.form.get("name", ""))
     gid = str(uuid.uuid4())
+    # Open-Membership: members-Set bleibt aus Kompatibilitätsgründen,
+    # wird aber nicht mehr für Sichtbarkeitsprüfungen genutzt.
     groups[gid] = {"name": name, "owner_id": g.uid, "members": {g.uid}}
     messages[gid] = []
     return redirect(url_for("group_view", gid=gid))
@@ -154,18 +156,14 @@ def create_group():
 @require_member
 def group_view(gid):
     grp = groups[gid]
-    member_list = sorted(
-        ((mid, users[mid]["name"]) for mid in grp["members"]),
-        key=lambda x: x[1].lower(),
-    )
     return render_template(
         "group.html",
         me=g.uname,
-        my_groups=my_groups(g.uid),
+        my_groups=all_groups_sorted(),
+        all_users=all_users_sorted(),
         active=(gid, grp),
         msgs=messages.get(gid, []),
         is_owner=(g.uid == grp["owner_id"]),
-        member_list=member_list,
         owner_name=users[grp["owner_id"]]["name"],
     )
 

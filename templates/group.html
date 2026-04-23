@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block head %}
+  {% if active %}<meta http-equiv="refresh" content="3">{% endif %}
+{% endblock %}
 {% block body %}
 <div class="app">
   <aside class="sidebar">
@@ -27,6 +30,17 @@
         <button type="submit">+</button>
       </form>
     </div>
+    <div style="padding:10px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--muted);">
+      Benutzer ({{ all_users|length }})
+    </div>
+    <ul style="list-style:none; margin:0; padding:0 16px 12px 16px;">
+      {% for uid, uname in all_users %}
+        <li style="display:flex; align-items:center; gap:8px; padding:4px 0;">
+          <span class="avatar">{{ uname[0]|upper }}</span>
+          <span>{{ uname }}{% if uname == me %} <em style="color:var(--muted);">(du)</em>{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ul>
   </aside>
 
   <main class="chat">
@@ -35,7 +49,7 @@
       <header>
         <div>
           <h2># {{ grp.name }}</h2>
-          <div class="subtitle">{{ grp.members|length }} Mitglieder · Eigentümer: {{ owner_name }}</div>
+          <div class="subtitle">Eigentümer: {{ owner_name }}</div>
         </div>
         {% if is_owner %}
           <details style="position:relative;">
@@ -49,27 +63,6 @@
                   <input name="name" type="text" value="{{ grp.name }}" maxlength="64" required style="flex:1;" />
                   <button type="submit">Speichern</button>
                 </div>
-              </form>
-              <div class="field" style="margin-bottom:12px;">
-                <label style="font-size:12px; color:var(--muted);">Mitglieder</label>
-                <ul class="member-list">
-                  {% for mid, mname in member_list %}
-                    <li>
-                      <span><span class="avatar">{{ mname[0]|upper }}</span> {{ mname }}</span>
-                      {% if mid == grp.owner_id %}
-                        <span class="owner-tag">Eigentümer</span>
-                      {% else %}
-                        <form method="post" action="{{ url_for('remove_member', gid=gid, target_uid=mid) }}" style="margin:0;">
-                          <button class="secondary" type="submit">Entfernen</button>
-                        </form>
-                      {% endif %}
-                    </li>
-                  {% endfor %}
-                </ul>
-              </div>
-              <form method="post" action="{{ url_for('add_member', gid=gid) }}" style="display:flex; gap:6px; margin-bottom:12px;">
-                <input name="name" type="text" placeholder="Anzeigename hinzufügen…" maxlength="32" required style="flex:1;" />
-                <button class="secondary" type="submit">Hinzufügen</button>
               </form>
               <form method="post" action="{{ url_for('delete_group', gid=gid) }}"
                     onsubmit="return confirm('Gruppe „{{ grp.name }}“ wirklich löschen?');" style="margin:0;">
