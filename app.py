@@ -68,7 +68,9 @@ def require_member(view):
     def wrapper(gid, *args, **kwargs):
         grp = groups.get(gid)
         if not grp:
-            abort(404)
+            # Gruppe existiert nicht (mehr) — z.B. nach Cold-Start (FA-16)
+            flash("Diese Gruppe existiert nicht mehr.")
+            return redirect(url_for("index"))
         if g.uid not in grp["members"]:
             abort(403)
         return view(gid, *args, **kwargs)
@@ -80,7 +82,8 @@ def require_owner(view):
     def wrapper(gid, *args, **kwargs):
         grp = groups.get(gid)
         if not grp:
-            abort(404)
+            flash("Diese Gruppe existiert nicht mehr.")
+            return redirect(url_for("index"))
         if g.uid != grp["owner_id"]:
             abort(403)
         return view(gid, *args, **kwargs)
