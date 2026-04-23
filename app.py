@@ -120,8 +120,15 @@ def index():
 @app.post("/login")
 def login():
     name = validate_name(request.form.get("name", ""))
-    uid = str(uuid.uuid4())
-    users[uid] = {"name": name}
+    # Existierenden User mit gleichem Namen wiederverwenden (case-insensitive),
+    # damit Mitgliedschaften, die der Owner vorab angelegt hat, sichtbar sind.
+    uid = next(
+        (uid for uid, u in users.items() if u["name"].lower() == name.lower()),
+        None,
+    )
+    if uid is None:
+        uid = str(uuid.uuid4())
+        users[uid] = {"name": name}
     session["uid"] = uid
     return redirect(url_for("index"))
 
