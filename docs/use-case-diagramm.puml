@@ -1,0 +1,39 @@
+@startuml ClassroomChat-UseCases
+title Classroom Chat — Use-Case-Übersicht (Schritt 2/3)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Gast" as Gast
+actor "Mitglied" as Mitglied
+actor "Gruppen-Eigentümer" as Eigentuemer
+
+' Vererbung: Eigentümer ist auch Mitglied; Mitglied war einmal Gast
+Mitglied  --|> Gast
+Eigentuemer --|> Mitglied
+
+rectangle "Classroom Chat" {
+  usecase "UC-1\nApp betreten &\nAnzeigename festlegen" as UC1
+  usecase "UC-2\nGruppe erstellen"               as UC2
+  usecase "UC-3\nGruppe umbenennen"              as UC3
+  usecase "UC-4\nMitglied hinzufügen"            as UC4
+  usecase "UC-5\nMitglied entfernen"             as UC5
+  usecase "UC-6\nGruppe löschen"                 as UC6
+  usecase "UC-8\nNachricht senden"               as UC8
+}
+
+Gast        --> UC1
+
+Mitglied    --> UC2
+Mitglied    --> UC8
+
+Eigentuemer --> UC3
+Eigentuemer --> UC4
+Eigentuemer --> UC5
+Eigentuemer --> UC6
+
+' Inklusionsbeziehung: Gruppe erstellen setzt Anzeigename voraus
+UC2  ..> UC1 : <<include>>
+
+@enduml

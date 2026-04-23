@@ -29,7 +29,6 @@ class Nachricht {
   --
   +bearbeiten(neuerText)
   +loeschen()
-  +antworten(text) : Nachricht
 }
 
 ' --- Beziehungen ---
@@ -44,18 +43,12 @@ Gruppe "0..*" -- "0..*" Benutzer : mitglieder
 Gruppe "1" <-- "0..*" Nachricht : enthaelt >
 Nachricht "0..*" --> "1" Benutzer : autor >
 
-' Threading: eine Nachricht kann Antwort auf eine andere sein
-Nachricht "0..1" <-- "0..*" Nachricht : antwortAuf >
-
-note bottom of Nachricht
-  Threads via Selbstassoziation "antwortAuf":
-  eine Top-Level-Nachricht hat antwortAuf = null.
-end note
-
 note bottom of Gruppe
   MVP-Vereinfachung: nur Textnachrichten,
-  keine Anhänge, keine Reaktionen, keine Rollen,
-  keine 1:1-DMs, keine Präsenz-/Tipp-/Lese-Indikatoren.
+  keine Threads, keine Anhänge, keine Reaktionen,
+  keine Rollen, keine 1:1-DMs,
+  keine Präsenz-/Tipp-/Lese-Indikatoren,
+  keine automatische Aktualisierung.
 end note
 
 @enduml
