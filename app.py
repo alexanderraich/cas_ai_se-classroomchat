@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
-    Flask, abort, flash, g, redirect, render_template, request, session, url_for
+    Flask, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 )
 
 app = Flask(__name__)
@@ -223,6 +223,38 @@ def delete_group(gid):
     groups.pop(gid, None)
     messages.pop(gid, None)
     return redirect(url_for("index"))
+
+
+# === JSON-API für SPA-artiges Live-Update ===
+@app.get("/g/<gid>/state.json")
+@require_login
+@require_member
+def group_state(gid):
+    grp = groups[gid]
+    return jsonify({
+        "active_gid": gid,
+        "active_name": grp["name"],
+        "owner_name": users[grp["owner_id"]]["name"],
+        "is_owner": (g.uid == grp["owner_id"]),
+        "messages": [
+            {
+                "id": m["id"],
+                "author_name": m["author_name"],
+                "text": m["text"],
+                "created_at": m["created_at"],
+                "is_me": (m["author_id"] == g.uid),
+            }
+            for m in messages.get(gid, [])
+        ],
+        "groups": [
+            {"gid": gid_, "name": grp_["name"], "active": gid_ == gid}
+            for gid_, grp_ in all_groups_sorted()
+        ],
+        "users": [
+            {"uid": uid, "name": uname, "is_me": uid == g.uid}
+            for uid, uname in all_users_sorted()
+        ],
+    })
 
 
 # === Error-Handler ===

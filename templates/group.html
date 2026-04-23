@@ -2,16 +2,99 @@
 {% block head %}
   {% if active %}
   <script>
-    // Auto-Reload alle 3s, pausiert wenn Composer fokussiert ist oder Text enthält.
+    // Live-Update via Polling auf /g/<gid>/state.json. Tauscht nur DOM-Inhalte aus,
+    // kein Full-Reload — Composer, Scroll, Settings-Dropdown bleiben.
     (function () {
-      var INTERVAL = 3000;
-      function tick() {
-        var ta = document.querySelector('.composer textarea');
-        var focused = ta && document.activeElement === ta;
-        var hasText = ta && ta.value.trim().length > 0;
-        if (!focused && !hasText) location.reload();
+      var INTERVAL = 2000;
+      var GID = {{ active[0]|tojson }};
+
+      function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+      function initial(s) { return s ? s[0].toUpperCase() : '?'; }
+      function timeOf(iso) {
+        try { var d = new Date(iso); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+        catch (e) { return ''; }
       }
+
+      function renderGroups(list) {
+        var nav = document.getElementById('group-list');
+        if (!nav) return;
+        nav.innerHTML = list.map(function (g) {
+          return '<a class="group ' + (g.active ? 'active' : '') + '" href="/g/' + g.gid + '" style="text-decoration:none;"><span># ' + esc(g.name) + '</span></a>';
+        }).join('');
+      }
+
+      function renderUsers(list) {
+        var ul = document.getElementById('user-list');
+        var count = document.getElementById('user-count');
+        if (!ul) return;
+        if (count) count.textContent = list.length;
+        ul.innerHTML = list.map(function (u) {
+          return '<li style="display:flex; align-items:center; gap:8px; padding:4px 0;">' +
+                 '<span class="avatar">' + esc(initial(u.name)) + '</span>' +
+                 '<span>' + esc(u.name) + (u.is_me ? ' <em style="color:var(--muted);">(du)</em>' : '') + '</span></li>';
+        }).join('');
+      }
+
+      function renderFeed(msgs) {
+        var feed = document.getElementById('feed');
+        if (!feed) return;
+        var atBottom = (feed.scrollTop + feed.clientHeight) >= (feed.scrollHeight - 20);
+        if (msgs.length === 0) {
+          feed.innerHTML = '<div class="empty-state"><div style="font-size:32px; margin-bottom:8px;">💬</div><div><strong>Noch keine Nachrichten</strong></div><div>Sei der Erste, der hier etwas schreibt.</div></div>';
+          return;
+        }
+        feed.innerHTML = msgs.map(function (m) {
+          return '<div class="message">' +
+                 '<span class="avatar">' + esc(initial(m.author_name)) + '</span>' +
+                 '<div><div class="meta"><span class="author">' + esc(m.author_name) + '</span> ' +
+                 '<span class="time">' + esc(timeOf(m.created_at)) + '</span></div>' +
+                 '<div class="body">' + esc(m.text) + '</div></div></div>';
+        }).join('');
+        if (atBottom) feed.scrollTop = feed.scrollHeight;
+      }
+
+      function renderHeader(state) {
+        var h = document.getElementById('group-title');
+        var s = document.getElementById('group-subtitle');
+        if (h) h.textContent = '# ' + state.active_name;
+        if (s) s.textContent = 'Eigentümer: ' + state.owner_name;
+      }
+
+      function tick() {
+        fetch('/g/' + GID + '/state.json', {credentials: 'same-origin'})
+          .then(function (r) {
+            if (r.status === 404 || r.status === 302) { location.href = '/'; return null; }
+            if (!r.ok) return null;
+            return r.json();
+          })
+          .then(function (s) {
+            if (!s) return;
+            renderGroups(s.groups);
+            renderUsers(s.users);
+            renderFeed(s.messages);
+            renderHeader(s);
+          })
+          .catch(function () { /* ignore transient errors */ });
+      }
+
+      // Erste Aktualisierung kurz nach Laden, dann periodisch.
+      setTimeout(tick, 500);
       setInterval(tick, INTERVAL);
+
+      // Composer: nach Senden Feld leeren, ohne Full-Submit-Reload — wir senden via fetch.
+      document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('composer-form');
+        if (!form) return;
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          var ta = form.querySelector('textarea');
+          var text = ta.value.trim();
+          if (!text) return;
+          var fd = new FormData(); fd.append('text', text);
+          fetch(form.action, {method: 'POST', body: fd, credentials: 'same-origin'})
+            .then(function () { ta.value = ''; tick(); ta.focus(); });
+        });
+      });
     })();
   </script>
   {% endif %}
@@ -29,7 +112,7 @@
         <button class="icon" title="Abmelden" type="submit">↪</button>
       </form>
     </div>
-    <nav class="group-list">
+    <nav class="group-list" id="group-list">
       {% for gid, grp in my_groups %}
         <a class="group {% if active and active[0] == gid %}active{% endif %}"
            href="{{ url_for('group_view', gid=gid) }}"
@@ -45,9 +128,9 @@
       </form>
     </div>
     <div style="padding:10px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--muted);">
-      Benutzer ({{ all_users|length }})
+      Benutzer (<span id="user-count">{{ all_users|length }}</span>)
     </div>
-    <ul style="list-style:none; margin:0; padding:0 16px 12px 16px;">
+    <ul id="user-list" style="list-style:none; margin:0; padding:0 16px 12px 16px;">
       {% for uid, uname in all_users %}
         <li style="display:flex; align-items:center; gap:8px; padding:4px 0;">
           <span class="avatar">{{ uname[0]|upper }}</span>
@@ -62,8 +145,8 @@
       {% set gid, grp = active %}
       <header>
         <div>
-          <h2># {{ grp.name }}</h2>
-          <div class="subtitle">Eigentümer: {{ owner_name }}</div>
+          <h2 id="group-title"># {{ grp.name }}</h2>
+          <div class="subtitle" id="group-subtitle">Eigentümer: {{ owner_name }}</div>
         </div>
         {% if is_owner %}
           <details style="position:relative;">
@@ -87,7 +170,7 @@
         {% endif %}
       </header>
 
-      <div class="feed">
+      <div class="feed" id="feed">
         {% if msgs %}
           {% for m in msgs %}
             <div class="message">
@@ -111,7 +194,7 @@
       </div>
 
       <div class="composer">
-        <form method="post" action="{{ url_for('send_message', gid=gid) }}">
+        <form id="composer-form" method="post" action="{{ url_for('send_message', gid=gid) }}">
           <textarea name="text" placeholder="Nachricht an # {{ grp.name }}…" maxlength="2000" required></textarea>
           <button type="submit">Senden</button>
         </form>
