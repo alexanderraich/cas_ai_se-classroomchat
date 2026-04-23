@@ -112,6 +112,41 @@ Push auf `main` → Render baut & deployed automatisch. Free Plan: nach 15 min I
 - Python · Flask · Gunicorn
 - GitHub · Render.com
 
+## In einer neuen Session weiterarbeiten
+
+Wenn du das Projekt in einem frischen Editor-/Chat-Kontext fortsetzt:
+
+1. **Repo klonen / öffnen**
+   ```sh
+   git clone https://github.com/alexanderraich/cas_ai_se-classroomchat.git
+   cd cas_ai_se-classroomchat
+   git pull --rebase            # falls bereits geklont
+   ```
+2. **Virtuelle Umgebung & Abhängigkeiten**
+   ```sh
+   python3.11 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+3. **Lokal starten** — `python app.py` → http://127.0.0.1:5050
+   Smoke-Test: zwei Browser, Login mit verschiedenen Namen, gleiche Gruppe öffnen, Nachricht senden → andere Seite zeigt Update innerhalb von ~2 s.
+4. **Kontext für KI-Assistenten laden** (in Reihenfolge lesen lassen):
+   1. Diese `README.md` (Architektur + Lessons Learned)
+   2. `spec/03 SDD Aufgabenblatt.pdf` (Original-Aufgabenstellung)
+   3. `docs/schritt2-feature-katalog.md` → `docs/schritt7-swot.md` (sequenziell)
+   4. `app.py` und `templates/group.html` (aktueller Implementierungsstand)
+5. **Wichtige Invarianten beim Weiterentwickeln**
+   - **In-Memory-State** ⇒ Gunicorn `--workers 1` lassen. Mehr Worker = State-Inkonsistenz.
+   - **Open Membership** ist bewusst (FA-07/08 entfernt). Keine Member-Sets wieder einführen, ohne Schritt 2/3/4 erneut zu refinen.
+   - **Polling-Endpoint** `/g/<gid>/state.json` ist die Single Source of Truth für die UI. Neue Daten dort ergänzen, dann Client-Renderer in `group.html` anpassen.
+   - **Stabile DOM-IDs** in `group.html` (`#group-list`, `#user-list`, `#feed`, `#composer-form`, …) — der Polling-Renderer hängt daran.
+   - **Spec ↔ Code synchron halten:** Wenn du FAs änderst, gleichzeitig Schritt 3, 4 und 6 nachziehen (siehe Refinement-Hinweise dort als Vorlage).
+6. **Deployment**: Push auf `main` → Render baut automatisch. Logs im Render-Dashboard. Cold-Start-Reset des State ist erwartet (FA-16).
+7. **Häufige Fallstricke**
+   - Port 5000 belegt (macOS AirPlay) → bleib bei 5050.
+   - `dquote>`-Hänger in zsh: mehrzeilige Strings entstehen durch unbalancierte `"`. Mit `Ctrl+C` abbrechen.
+   - 404 nach Render-Restart: erwartet, 404-Handler leitet auf `/`.
+
 ## Lizenz
 
 Lernprojekt im Rahmen des CAS AI SE — keine produktive Nutzung vorgesehen.
