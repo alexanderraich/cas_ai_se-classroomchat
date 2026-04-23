@@ -1,0 +1,61 @@
+@startuml ClassroomChat-Domaenenmodell
+title Classroom Chat — DDD-Domänenmodell (Schritt 1, vereinfacht)
+
+skinparam classAttributeIconSize 0
+hide circle
+
+class Benutzer {
+  +id : UUID
+  +anzeigename : String
+  +beigetretenAm : DateTime
+}
+
+class Gruppe {
+  +id : UUID
+  +name : String
+  +erstelltAm : DateTime
+  --
+  +umbenennen(neuerName)
+  +mitgliedHinzufuegen(benutzer)
+  +mitgliedEntfernen(benutzer)
+}
+
+class Nachricht {
+  +id : UUID
+  +text : String
+  +erstelltAm : DateTime
+  +bearbeitetAm : DateTime [0..1]
+  +geloescht : Boolean
+  --
+  +bearbeiten(neuerText)
+  +loeschen()
+  +antworten(text) : Nachricht
+}
+
+' --- Beziehungen ---
+
+' Eigentum: genau ein Eigentümer pro Gruppe; ein Eigentümer kann mehrere Gruppen besitzen
+Gruppe "0..*" --> "1" Benutzer : gehoertZu >
+
+' Mitgliedschaft: viele-zu-viele; ein Eigentümer ist implizit auch Mitglied
+Gruppe "0..*" -- "0..*" Benutzer : mitglieder
+
+' Nachrichten gehören zu genau einer Gruppe und haben genau einen Autor
+Gruppe "1" <-- "0..*" Nachricht : enthaelt >
+Nachricht "0..*" --> "1" Benutzer : autor >
+
+' Threading: eine Nachricht kann Antwort auf eine andere sein
+Nachricht "0..1" <-- "0..*" Nachricht : antwortAuf >
+
+note bottom of Nachricht
+  Threads via Selbstassoziation "antwortAuf":
+  eine Top-Level-Nachricht hat antwortAuf = null.
+end note
+
+note bottom of Gruppe
+  MVP-Vereinfachung: nur Textnachrichten,
+  keine Anhänge, keine Reaktionen, keine Rollen,
+  keine 1:1-DMs, keine Präsenz-/Tipp-/Lese-Indikatoren.
+end note
+
+@enduml
