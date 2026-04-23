@@ -218,6 +218,13 @@ def delete_group(gid):
 
 
 # === Error-Handler ===
+@app.get("/favicon.ico")
+def favicon():
+    """Browser fragt favicon automatisch an — wir liefern leeres 204, damit
+    keine 404-Logspam entsteht."""
+    return ("", 204)
+
+
 @app.errorhandler(404)
 def handle_404(e):
     """Cold-Start auf Render Free-Plan löscht den In-Memory-Store (FA-16).
