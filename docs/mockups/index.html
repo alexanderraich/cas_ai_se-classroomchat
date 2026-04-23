@@ -55,7 +55,7 @@
         <div class="subtitle"><span id="memberCount">4</span> Mitglieder</div>
       </div>
       <div>
-        <button class="secondary" onclick="openModal('settingsModal')">Einstellungen</button>
+        <button class="secondary" id="settingsBtn" onclick="openSettings()">Einstellungen</button>
       </div>
     </header>
 
@@ -97,33 +97,31 @@
 <div class="modal-backdrop" id="settingsModal" style="display:none;">
   <div class="modal">
     <header>
-      <h3>Gruppe „Projekt KI" verwalten</h3>
+      <h3 id="settingsTitle">Gruppe verwalten</h3>
       <button class="icon" onclick="closeModal('settingsModal')">✕</button>
     </header>
     <div class="body">
       <div class="field">
         <label for="renameInput">Name der Gruppe</label>
-        <input id="renameInput" type="text" value="Projekt KI" maxlength="64" />
+        <input id="renameInput" type="text" maxlength="64" />
       </div>
       <div class="field">
         <label>Mitglieder</label>
-        <ul class="member-list">
-          <li><span><span class="avatar">M</span> Mira</span><span class="owner-tag">Eigentümer</span></li>
-          <li><span><span class="avatar" style="background:#7c3aed;">A</span> Anna</span><button class="secondary">Entfernen</button></li>
-          <li><span><span class="avatar" style="background:#0ea5e9;">B</span> Ben</span><button class="secondary">Entfernen</button></li>
-          <li><span><span class="avatar" style="background:#f97316;">L</span> Lukas</span><button class="secondary">Entfernen</button></li>
-        </ul>
+        <ul class="member-list" id="memberList"></ul>
       </div>
       <div class="field">
         <label for="addMember">Mitglied hinzufügen</label>
-        <input id="addMember" type="text" placeholder="Anzeigename suchen…" />
+        <form onsubmit="event.preventDefault(); addMember();" style="display:flex; gap:8px;">
+          <input id="addMember" type="text" placeholder="Anzeigename…" maxlength="32" style="flex:1;" />
+          <button class="secondary" type="submit">Hinzufügen</button>
+        </form>
       </div>
     </div>
     <div class="footer">
-      <button class="danger" onclick="if(confirm('Gruppe wirklich löschen?')) closeModal('settingsModal')">Gruppe löschen</button>
+      <button class="danger" onclick="deleteGroup()">Gruppe löschen</button>
       <span style="flex:1"></span>
       <button class="secondary" onclick="closeModal('settingsModal')">Abbrechen</button>
-      <button onclick="closeModal('settingsModal')">Speichern</button>
+      <button onclick="saveSettings()">Speichern</button>
     </div>
   </div>
 </div>
@@ -171,8 +169,8 @@
         { author: 'Lukas', color: '#f97316', time: '09:20', text: 'Treffen heute 14 Uhr im Raum B2.07?' },
       ],
     },
-    g2: { name: 'Übung 03', members: ['Mira','...','...','...','...','...','...','...','...','...','...','...'], ownerIsMe: false, messages: [] },
-    g3: { name: 'Smalltalk', members: ['Mira','Anna','Ben','Lukas','...','...','...'], ownerIsMe: false, messages: [] },
+    g2: { name: 'Übung 03', members: ['Mira','Anna','Ben','Lukas','Sara','Tim','Eva','Jonas'], ownerIsMe: false, messages: [] },
+    g3: { name: 'Smalltalk', members: ['Mira','Anna','Ben','Lukas','Sara','Tim'], ownerIsMe: false, messages: [] },
   };
   let activeId = 'g1';
   let nextId = 4;
@@ -198,6 +196,11 @@
     document.getElementById('groupTitle').textContent = '# ' + g.name;
     document.getElementById('memberCount').textContent = g.members.length;
     document.getElementById('composerInput').placeholder = 'Nachricht an # ' + g.name + '…';
+    const btn = document.getElementById('settingsBtn');
+    btn.disabled = !g.ownerIsMe;
+    btn.title = g.ownerIsMe ? 'Gruppe verwalten' : 'Nur der Eigentümer kann diese Gruppe verwalten';
+    btn.style.opacity = g.ownerIsMe ? '1' : '0.5';
+    btn.style.cursor = g.ownerIsMe ? 'pointer' : 'not-allowed';
   }
 
   function renderFeed() {
@@ -254,8 +257,106 @@
     switchGroup(id);
   }
 
+  // === Gruppen-Einstellungen (UC-3..UC-6) ===
+  function openSettings() {
+    const g = sampleGroups[activeId];
+    if (!g.ownerIsMe) return;
+    document.getElementById('settingsTitle').textContent = 'Gruppe „' + g.name + '“ verwalten';
+    document.getElementById('renameInput').value = g.name;
+    renderMembers();
+    openModal('settingsModal');
+  }
+
+  function renderMembers() {
+    const g = sampleGroups[activeId];
+    const ul = document.getElementById('memberList');
+    ul.innerHTML = '';
+    g.members.forEach(m => {
+      const li = document.createElement('li');
+      const isOwner = (m === ME.name && g.ownerIsMe);
+      const left = document.createElement('span');
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.gap = '8px';
+      const av = document.createElement('span');
+      av.className = 'avatar';
+      av.textContent = m[0].toUpperCase();
+      left.appendChild(av);
+      const nm = document.createElement('span');
+      nm.textContent = m;
+      left.appendChild(nm);
+      li.appendChild(left);
+      if (isOwner) {
+        const tag = document.createElement('span');
+        tag.className = 'owner-tag';
+        tag.textContent = 'Eigentümer';
+        li.appendChild(tag);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'secondary';
+        btn.textContent = 'Entfernen';
+        btn.addEventListener('click', () => removeMember(m));
+        li.appendChild(btn);
+      }
+      ul.appendChild(li);
+    });
+  }
+
+  function addMember() {
+    const input = document.getElementById('addMember');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const g = sampleGroups[activeId];
+    if (g.members.includes(name)) {
+      alert('„' + name + '“ ist bereits Mitglied.');
+      return;
+    }
+    g.members.push(name);
+    input.value = '';
+    renderMembers();
+    renderHeader();
+  }
+
+  function removeMember(name) {
+    const g = sampleGroups[activeId];
+    if (name === ME.name && g.ownerIsMe) return; // Eigentümer kann sich nicht entfernen
+    g.members = g.members.filter(m => m !== name);
+    renderMembers();
+    renderHeader();
+  }
+
+  function saveSettings() {
+    const g = sampleGroups[activeId];
+    const newName = document.getElementById('renameInput').value.trim();
+    if (!newName) return;
+    g.name = newName;
+    closeModal('settingsModal');
+    renderSidebar();
+    renderHeader();
+  }
+
+  function deleteGroup() {
+    const g = sampleGroups[activeId];
+    if (!confirm('Gruppe „' + g.name + '“ wirklich löschen?')) return;
+    delete sampleGroups[activeId];
+    closeModal('settingsModal');
+    const remaining = Object.keys(sampleGroups);
+    if (remaining.length) {
+      switchGroup(remaining[0]);
+    } else {
+      activeId = null;
+      renderSidebar();
+      document.getElementById('groupTitle').textContent = 'Keine Gruppen';
+      document.getElementById('memberCount').textContent = '0';
+      document.getElementById('feed').innerHTML =
+        '<div class="empty-state"><div><strong>Keine Gruppen vorhanden</strong></div>'
+      + '<div>Erstelle links eine neue Gruppe, um zu starten.</div></div>';
+    }
+  }
+
   // === Composer ===
   function sendMessage() {
+    if (!activeId) return;
     const input = document.getElementById('composerInput');
     const text = input.value.trim();
     if (!text) return;
