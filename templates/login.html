@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block body %}
+<section class="onboarding">
+  <div class="card">
+    <h1>Willkommen im Classroom Chat</h1>
+    <p>Wähle einen Anzeigenamen — keine Registrierung nötig.</p>
+    <form method="post" action="{{ url_for('login') }}">
+      <div class="field">
+        <label for="name">Anzeigename</label>
+        <input id="name" name="name" type="text" placeholder="z. B. Mira"
+               maxlength="32" autofocus required />
+      </div>
+      <button type="submit">Loslegen</button>
+      <div class="hint">1–32 Zeichen.</div>
+    </form>
+  </div>
+</section>
+{% endblock %}
