@@ -1,0 +1,23 @@
+# Python (für Schritt 6)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build / Logs
+dist/
+build/
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
