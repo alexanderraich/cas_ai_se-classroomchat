@@ -217,6 +217,15 @@ def delete_group(gid):
     return redirect(url_for("index"))
 
 
+# === Error-Handler ===
+@app.errorhandler(404)
+def handle_404(e):
+    """Cold-Start auf Render Free-Plan löscht den In-Memory-Store (FA-16).
+    Alte Gruppen-URLs landen sonst im 404 — wir leiten auf die Startseite um.
+    """
+    return redirect(url_for("index"))
+
+
 # === Jinja-Filter ===
 @app.template_filter("localtime")
 def localtime_filter(iso: str) -> str:
