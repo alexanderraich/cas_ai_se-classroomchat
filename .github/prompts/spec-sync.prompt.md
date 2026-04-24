@@ -1,49 +1,72 @@
 ---
-description: "Use when code in app.py / templates / static has drifted from the SDD specs (Schritt 2/3/4/6) — diff implementation against specs, list mismatches, propose minimal edits to either side."
+description: "Use when code in app.py / templates / static may have drifted from the SDD specs (Schritt 2/3/4/6) — diff implementation against specs, list mismatches, propose minimal edits to either side. Read-only by default; never commits."
 agent: agent
-argument-hint: "Optional: Bereich (z. B. 'nur Schritt 3' oder 'Endpoints')"
+argument-hint: "Optional: scope (e.g. 'Schritt 3 only', 'endpoints', 'state.json fields')"
 tools: [search, edit, runCommands]
 ---
 
-# /spec-sync — Spezifikationen mit Code abgleichen
+# /spec-sync — Reconcile specs with implementation
 
-Du synchronisierst die SDD-Artefakte mit dem aktuellen Implementierungsstand des Classroom-Chat-Projekts.
+You synchronize the SDD artifacts with the current implementation state of the Classroom Chat project.
 
-## Kontext
+## Inputs
 
-- Projekt-README: [README.md](../../README.md)
-- Implementierung: [app.py](../../app.py), [templates/group.html](../../templates/group.html)
-- Specs (Quelle der Wahrheit für Anforderungen):
-  - [docs/schritt2-feature-katalog.md](../../docs/schritt2-feature-katalog.md) — Features F1..F5
-  - [docs/schritt3-use-cases.md](../../docs/schritt3-use-cases.md) — UCs + FA-Liste
-  - [docs/schritt4-quality-check.md](../../docs/schritt4-quality-check.md) — Quality Check
-  - [docs/schritt6-architektur.md](../../docs/schritt6-architektur.md) — Architektur + Endpoint-Tabelle
-- Diagramme: [docs/diagrams/domaenenmodell.puml](../../docs/diagrams/domaenenmodell.puml), [docs/diagrams/use-case-diagramm.puml](../../docs/diagrams/use-case-diagramm.puml)
+- Project README: [README.md](../../README.md)
+- Implementation:
+  - [app.py](../../app.py) — Flask routes + in-memory state
+  - [templates/group.html](../../templates/group.html) — UI + polling client
+  - [templates/base.html](../../templates/base.html), [templates/login.html](../../templates/login.html)
+  - [static/style.css](../../static/style.css)
+  - [render.yaml](../../render.yaml)
+- Specs (source of truth for requirements):
+  - [docs/schritt2-feature-katalog.md](../../docs/schritt2-feature-katalog.md) — features F1..F5
+  - [docs/schritt3-use-cases.md](../../docs/schritt3-use-cases.md) — use cases + FA list
+  - [docs/schritt4-quality-check.md](../../docs/schritt4-quality-check.md) — quality check
+  - [docs/schritt6-architektur.md](../../docs/schritt6-architektur.md) — architecture + endpoint table
+- Diagrams: [docs/diagrams/domaenenmodell.puml](../../docs/diagrams/domaenenmodell.puml), [docs/diagrams/use-case-diagramm.puml](../../docs/diagrams/use-case-diagramm.puml)
 
-## Vorgehen
+If the user supplies an argument, narrow the scope accordingly; otherwise cover everything below.
 
-1. **Inventarisieren**
-   - Liste alle Routen aus `app.py` (Methode + Pfad + Zweck).
-   - Liste alle Felder, die `state.json` zurückgibt.
-   - Liste alle stabilen DOM-IDs / Forms in `templates/group.html`.
-2. **Spec-Stand sammeln**
-   - Extrahiere alle FA-IDs aus Schritt 3 und die Endpoint-Tabelle aus Schritt 6.
-   - Extrahiere die aktuelle Feature-Liste F1..F5 aus Schritt 2.
-3. **Diff bilden** — präsentiere als Tabelle:
+## Procedure
 
-   | Bereich | Spec sagt | Code tut | Status | Empfehlung |
-   | ------- | --------- | -------- | ------ | ---------- |
-   | …       | …         | …        | ✅ / ⚠️ / ❌ | spec / code anpassen |
+1. **Inventory the implementation**
+   - List every Flask route from `app.py` (HTTP method + path + purpose, one line each).
+   - List every field returned by `/g/<gid>/state.json` (top-level keys + nested keys for `groups[]`, `users[]`, `messages[]`).
+   - List the stable DOM IDs and form IDs in `templates/group.html` (`#group-list`, `#user-list`, `#feed`, `#composer-form`, `#new-group-form`, `#rename-form`, `#delete-form`, etc.).
+   - Note the gunicorn flags from `render.yaml`.
 
-4. **Invarianten prüfen** (hart, nicht ignorieren):
-   - In-Memory-State ⇒ `--workers 1` in `render.yaml`
-   - Open Membership ⇒ kein `members`-Set in `app.py`, kein FA-07/08 in den Specs
-   - `/g/<gid>/state.json` ist Single Source of Truth fürs Polling
-5. **Vorschläge** — gruppiert nach „Spec nachziehen" vs. „Code anpassen". Begründe jede Empfehlung in einem Satz. Nenne pro Vorschlag den genauen Datei-Pfad und ggf. eine konkrete Edit-Skizze.
-6. **Stop**. Führe Edits **nicht** automatisch aus. Warte auf Bestätigung des Users, welche Vorschläge übernommen werden.
+2. **Inventory the specs**
+   - Extract the full FA-ID list from Schritt 3 (note any explicitly removed IDs such as FA-07 / FA-08).
+   - Extract the endpoint table from Schritt 6.
+   - Extract the feature list F1..F5 from Schritt 2.
+   - Note the actor list from the use case diagram.
 
-## Out-of-Scope
+3. **Build the diff** — present it as a single table:
 
-- Keine neuen Features erfinden. Nur Drift dokumentieren.
-- Keine Diagramme rendern (nur Puml-Quelltext berücksichtigen).
-- Keine Git-Commits ohne ausdrückliche Freigabe.
+   | Area | Spec says | Code does | Status | Recommendation |
+   | ---- | --------- | --------- | ------ | -------------- |
+   | …    | …         | …         | ✅ / ⚠️ / ❌ | update spec / update code / no action |
+
+   One row per concrete divergence. Do not list matches.
+
+4. **Check the hard invariants** (call them out explicitly if violated):
+   - In-memory state ⇒ `--workers 1` in `render.yaml`.
+   - Open Membership ⇒ no `members` set in `app.py`, no FA-07 / FA-08 in the specs, no member-management routes.
+   - `/g/<gid>/state.json` is the single source of truth for the polling UI; every UI-visible field must originate there.
+   - Owner-only routes (`/rename`, `/delete`) are protected by `require_owner`.
+   - 404 handler redirects to `/`.
+
+5. **Recommendations** — group into two lists:
+   - **Update specs** (when code is correct, spec is stale).
+   - **Update code** (when spec is correct, code drifted).
+
+   For each item give: target file, one-sentence rationale, and a concrete edit sketch (the minimal patch — do not paste the full file).
+
+6. **Stop.** Do **not** apply edits automatically. Wait for the user to confirm which recommendations to take.
+
+## Out of scope
+
+- Do not invent new features. Only document drift.
+- Do not render diagrams; only consider the PlantUML source.
+- Do not run git commands or commit anything.
+- Do not start the Flask server.
