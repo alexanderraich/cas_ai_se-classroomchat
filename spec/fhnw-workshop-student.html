@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FHNW Claude Code Workshop</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --junior: #3fb950;
+    --mid: #d29922;
+    --senior: #f85149;
+    --green: #238636;
+    --purple: #8957e5;
+    --cyan: #39d2c0;
+    --blue: #388bfd;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+
+  /* ── Beautiful enhancements ── */
+  .slide { background: var(--bg); }
+  .slide.slide-title {
+    background: radial-gradient(ellipse at 50% 120%, rgba(56,139,253,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(137,87,229,0.06) 0%, transparent 50%),
+                var(--bg);
+  }
+  .slide.slide-block-header {
+    background: radial-gradient(ellipse at 30% 80%, rgba(56,139,253,0.06) 0%, transparent 50%),
+                var(--bg);
+  }
+
+  /* Entrance animations */
+  .slide.active h1, .slide.active h2 { animation: fadeUp 0.5s ease both; }
+  .slide.active h3 { animation: fadeUp 0.5s 0.05s ease both; }
+  .slide.active p, .slide.active .callout, .slide.active table,
+  .slide.active pre, .slide.active .layer-stack { animation: fadeUp 0.45s 0.1s ease both; }
+  .slide.active .check-item:nth-child(1) { animation: fadeUp 0.4s 0.1s ease both; }
+  .slide.active .check-item:nth-child(2) { animation: fadeUp 0.4s 0.15s ease both; }
+  .slide.active .check-item:nth-child(3) { animation: fadeUp 0.4s 0.2s ease both; }
+  .slide.active .check-item:nth-child(4) { animation: fadeUp 0.4s 0.25s ease both; }
+  .slide.active .check-item:nth-child(5) { animation: fadeUp 0.4s 0.3s ease both; }
+  .slide.active .step-item:nth-child(1) { animation: fadeUp 0.4s 0.05s ease both; }
+  .slide.active .step-item:nth-child(2) { animation: fadeUp 0.4s 0.12s ease both; }
+  .slide.active .step-item:nth-child(3) { animation: fadeUp 0.4s 0.19s ease both; }
+  .slide.active .step-item:nth-child(4) { animation: fadeUp 0.4s 0.26s ease both; }
+  .slide.active .step-item:nth-child(5) { animation: fadeUp 0.4s 0.33s ease both; }
+  .slide.active .cards-row .card-item:nth-child(1) { animation: fadeUp 0.4s 0.1s ease both; }
+  .slide.active .cards-row .card-item:nth-child(2) { animation: fadeUp 0.4s 0.2s ease both; }
+  .slide.active .cards-row .card-item:nth-child(3) { animation: fadeUp 0.4s 0.3s ease both; }
+  .slide.active .cards-row .card-item:nth-child(4) { animation: fadeUp 0.4s 0.4s ease both; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .slide.active h1, .slide.active h2, .slide.active h3,
+    .slide.active p, .slide.active pre, .slide.active table,
+    .slide.active .callout, .slide.active .check-item,
+    .slide.active .step-item, .slide.active .cards-row .card-item,
+    .slide.active .layer-stack { animation: none !important; }
+  }
+
+  /* ── Progress bar ── */
+  .progress-bar {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: linear-gradient(90deg, var(--blue), var(--purple), var(--cyan));
+    width: 0; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 200;
+    box-shadow: 0 0 12px rgba(56,139,253,0.5);
+  }
+
+  /* ── Counter ── */
+  .counter {
+    position: fixed; bottom: 20px; right: 30px;
+    color: var(--muted); font-size: 14px; z-index: 200;
+    font-variant-numeric: tabular-nums;
+    background: rgba(13,17,23,0.8); padding: 4px 12px;
+    border-radius: 6px; backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Navigation hint ── */
+  .nav-hint {
+    position: fixed; bottom: 20px; left: 30px;
+    color: var(--muted); font-size: 12px; z-index: 200;
+    opacity: 0.5;
+  }
+  .nav-hint kbd {
+    background: var(--card); border: 1px solid var(--border);
+    padding: 2px 6px; border-radius: 3px; font-size: 11px;
+    font-family: inherit;
+  }
+
+  /* ── Deck + Slides ── */
+  .deck {
+    position: relative; width: 100vw; height: 100vh; overflow: hidden;
+  }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 60px 80px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  /* Slide layout variants */
+  .slide.slide-title { align-items: center; text-align: center; }
+  .slide.slide-split { flex-direction: row; gap: 40px; align-items: stretch; }
+  .slide.slide-split .col { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* ── Typography ── */
+  .slide h1 { font-size: 52px; margin-bottom: 16px; line-height: 1.15; font-weight: 700; letter-spacing: -0.5px; }
+  .slide h2 { font-size: 38px; margin-bottom: 20px; line-height: 1.2; font-weight: 600; }
+  .slide h3 { font-size: 28px; margin-bottom: 16px; color: var(--text); font-weight: 600; }
+  .slide p, .slide li, .slide td, .slide th { font-size: 24px; }
+  .slide .subtitle { color: var(--muted); font-size: 28px; margin-bottom: 16px; font-weight: 300; }
+  .slide .small { font-size: 20px; color: var(--muted); }
+  .slide .tiny { font-size: 16px; color: var(--muted); }
+  .slide-title h1 {
+    font-size: 60px; font-weight: 800; letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--text) 30%, var(--blue) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Title bar for content slides ── */
+  .slide-header {
+    margin-bottom: 32px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .slide-header::after {
+    content: ''; position: absolute; bottom: -1px; left: 0;
+    width: 80px; height: 2px;
+    background: linear-gradient(90deg, var(--blue), transparent);
+  }
+  .slide-header h2 { margin-bottom: 0; }
+  .slide-header .tag {
+    display: inline-block; font-size: 18px; color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Block header slides ── */
+  .block-num {
+    font-size: 120px; font-weight: 800;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; color: transparent;
+    opacity: 0.4; line-height: 1; margin-bottom: 8px;
+    filter: drop-shadow(0 0 40px rgba(56,139,253,0.15));
+  }
+  .block-time {
+    font-size: 22px; color: var(--muted); margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Code blocks ── */
+  pre {
+    background: linear-gradient(135deg, var(--card) 0%, rgba(22,27,34,0.95) 100%);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px;
+    overflow-x: auto; font-size: 18px; line-height: 1.55;
+    margin: 12px 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  code {
+    font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  .code-label {
+    display: inline-block; font-size: 13px; padding: 2px 10px;
+    border-radius: 4px 4px 0 0; margin-bottom: -1px;
+    font-family: -apple-system, sans-serif; font-weight: 600;
+  }
+  .code-label.bash { background: var(--green); color: #fff; }
+  .code-label.json { background: var(--purple); color: #fff; }
+  .code-label.md { background: var(--cyan); color: #0d1117; }
+  .code-label.yaml { background: var(--mid); color: #0d1117; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 14px 18px; border: 1px solid var(--border); text-align: left; font-size: 22px; }
+  th { background: linear-gradient(180deg, var(--card), rgba(22,27,34,0.8)); color: var(--muted); font-weight: 600; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+  tr:hover td { background: rgba(56,139,253,0.04); }
+
+  /* ── Layer stack ── */
+  .layer-stack { display: flex; flex-direction: column; gap: 6px; margin: 16px 0; }
+  .layer {
+    padding: 16px 24px; border-radius: 10px; font-weight: 600;
+    font-size: 24px; text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: default;
+  }
+  .layer:hover { transform: scale(1.02); }
+  .layer.orch { background: rgba(35,134,54,.2); border: 1px solid rgba(63,185,80,0.4); color: var(--junior); box-shadow: 0 0 20px rgba(63,185,80,0.08); }
+  .layer.ext  { background: rgba(137,87,229,.15); border: 1px solid rgba(137,87,229,0.4); color: var(--purple); box-shadow: 0 0 20px rgba(137,87,229,0.08); }
+  .layer.inst { background: rgba(57,210,192,.12); border: 1px solid rgba(57,210,192,0.4); color: var(--cyan); box-shadow: 0 0 20px rgba(57,210,192,0.08); }
+  .layer.core { background: rgba(56,139,253,.12); border: 1px solid rgba(56,139,253,0.4); color: var(--blue); box-shadow: 0 0 20px rgba(56,139,253,0.08); }
+
+  /* ── Level badges ── */
+  .badge {
+    display: inline-block; font-size: 16px; padding: 2px 14px;
+    border-radius: 12px; font-weight: 600; vertical-align: middle;
+  }
+  .badge-j { background: rgba(63,185,80,.2);  color: var(--junior); }
+  .badge-m { background: rgba(210,153,34,.2);  color: var(--mid); }
+  .badge-s { background: rgba(248,81,73,.2);   color: var(--senior); }
+
+  /* ── Checklist items ── */
+  .check-item {
+    font-size: 22px; margin: 10px 0; display: flex; align-items: baseline; gap: 12px;
+    padding: 8px 12px; border-radius: 6px;
+    transition: background 0.15s ease;
+  }
+  .check-item:hover { background: rgba(255,255,255,0.02); }
+  .check-item::before {
+    content: ""; width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid var(--border); border-radius: 4px;
+    margin-top: 4px;
+  }
+  .check-item.j::before { border-color: var(--junior); }
+  .check-item.m::before { border-color: var(--mid); }
+  .check-item.s::before { border-color: var(--senior); }
+
+  /* ── Callout ── */
+  .callout {
+    border-left: 4px solid var(--blue); background: var(--card);
+    padding: 18px 24px; border-radius: 0 10px 10px 0;
+    margin: 16px 0; font-size: 24px; font-style: italic;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  .callout.critical { border-left-color: var(--senior); background: rgba(248,81,73,0.06); }
+  .callout.principle { border-left-color: var(--cyan); background: rgba(57,210,192,0.06); font-size: 28px; }
+
+  /* ── Numbered steps ── */
+  .steps { counter-reset: step; margin: 16px 0; }
+  .step-item {
+    display: flex; align-items: flex-start; gap: 16px;
+    margin-bottom: 14px; font-size: 24px;
+  }
+  .step-item::before {
+    counter-increment: step; content: counter(step);
+    min-width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    color: #fff; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 20px; font-weight: 700; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(56,139,253,0.3);
+  }
+
+  /* ── Reference card ── */
+  .ref-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px 28px; max-height: 70vh; overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .ref-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+  .ref-card pre { font-size: 17px; background: var(--bg); border: none; }
+  .ref-card.junior { border-top: 4px solid var(--junior); box-shadow: 0 4px 20px rgba(63,185,80,0.1); }
+  .ref-card.mid    { border-top: 4px solid var(--mid); box-shadow: 0 4px 20px rgba(210,153,34,0.1); }
+  .ref-card.senior { border-top: 4px solid var(--senior); box-shadow: 0 4px 20px rgba(248,81,73,0.1); }
+
+  /* ── Cards grid ── */
+  .cards-row { display: flex; gap: 16px; margin: 12px 0; }
+  .cards-row .card-item {
+    flex: 1; background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .cards-row .card-item:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+  .cards-row .card-item h3 { font-size: 22px; margin-bottom: 8px; }
+  .cards-row .card-item p { font-size: 20px; color: var(--muted); }
+
+  /* ── Closing slide ── */
+  .closing-quote {
+    font-size: 40px; font-weight: 600; line-height: 1.4;
+    max-width: 700px; text-align: center;
+    background: linear-gradient(135deg, var(--text) 30%, var(--cyan) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ═══════ Overview mode ═══════ */
+  body.overview { overflow: auto; }
+  body.overview .deck {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 16px; padding: 24px; height: auto; overflow: auto;
+  }
+  body.overview .slide {
+    position: relative; opacity: 1; pointer-events: auto;
+    transform: scale(0.95); border: 2px solid var(--border);
+    border-radius: 8px; height: 220px; cursor: pointer;
+    font-size: 6px; overflow: hidden; padding: 12px 16px;
+    justify-content: flex-start;
+  }
+  body.overview .slide.active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
+  body.overview .slide h1 { font-size: 12px; }
+  body.overview .slide h2 { font-size: 10px; }
+  body.overview .slide h3 { font-size: 8px; }
+  body.overview .slide p, body.overview .slide li,
+  body.overview .slide td, body.overview .slide th { font-size: 6px; }
+  body.overview .slide pre { font-size: 5px; padding: 4px; }
+  body.overview .slide .block-num { font-size: 24px; }
+  body.overview .progress-bar, body.overview .counter { display: none; }
+
+  /* ── Scrollable slide content ── */
+  .slide-scroll {
+    overflow-y: auto; max-height: calc(100vh - 120px); padding-right: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"></div>
+<div class="counter">1 / 40</div>
+<div class="nav-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> navigate &middot; <kbd>Esc</kbd> overview</div>
+
+<div class="deck">
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 1: Title -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title active">
+  <h1>FHNW Claude Code Workshop</h1>
+  <p class="subtitle">Build an AI-Powered Development Harness in 6 Hours</p>
+  <p class="small" style="margin-top:24px">Full-day hands-on workshop &mdash; Junior / Mid / Senior tracks</p>
+  <p class="tiny" style="margin-top:12px">Arrow keys or click to navigate &middot; Esc for overview</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 2: Agenda -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Workshop Agenda</h2></div>
+  <table>
+    <tr><th>Block</th><th>Topic</th><th>Time</th><th>Floor</th><th>Ceiling</th></tr>
+    <tr><td>1</td><td>Mental Model</td><td>30 min</td><td>Label the 4 layers</td><td>Map real projects</td></tr>
+    <tr><td>2</td><td>Environment Setup</td><td>60 min</td><td>Install + verify</td><td>Worktrees + MCP</td></tr>
+    <tr><td>3</td><td>CLAUDE.md + Memory</td><td>60 min</td><td>CLAUDE.md exists</td><td>Rules + MEMORY.md</td></tr>
+    <tr><td>4</td><td>Hooks + TDD</td><td>60 min</td><td>Hooks wired + TDD x1</td><td>Hook matrix</td></tr>
+    <tr><td>5</td><td>Commands + Skills</td><td>60 min</td><td>3 commands + 1 skill</td><td>Plugin skeleton</td></tr>
+    <tr><td>6</td><td>Subagents + CI + Ship</td><td>90 min</td><td>Full ship x1</td><td>GitHub Actions CI</td></tr>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 3: Architecture -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>The 4-Layer Architecture</h2></div>
+  <div class="layer-stack">
+    <div class="layer orch">Orchestration &mdash; Subagents, CI, parallel dispatch</div>
+    <div class="layer ext">Extension &mdash; Commands, Skills, MCP servers</div>
+    <div class="layer inst">Instruction &mdash; CLAUDE.md, Memory, Rules</div>
+    <div class="layer core">Core &mdash; Claude Code CLI + Model</div>
+  </div>
+  <div class="callout" style="margin-top:24px">"Prompts suggest, hooks guarantee."</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 4: Block 1 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">1</div>
+  <h1>The Mental Model</h1>
+  <p class="block-time">0:00 &ndash; 0:30 &middot; 30 minutes</p>
+  <p class="small" style="margin-top:16px">Where do you currently live in the diagram?</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 5: Layer deep-dive -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Layer Deep Dive</h2></div>
+  <table>
+    <tr><th>Layer</th><th>What It Controls</th><th>Example</th></tr>
+    <tr><td style="color:var(--blue)">Core</td><td>Model + CLI runtime &mdash; what you get out of the box</td><td><code>claude</code>, <code>/doctor</code></td></tr>
+    <tr><td style="color:var(--cyan)">Instruction</td><td>Persistent context that survives across sessions</td><td>CLAUDE.md, memory files</td></tr>
+    <tr><td style="color:var(--purple)">Extension</td><td>Reusable workflows and external tools</td><td>/pr command, reviewer skill</td></tr>
+    <tr><td style="color:var(--junior)">Orchestration</td><td>Multi-agent coordination + CI integration</td><td>Subagents, CI pipelines</td></tr>
+  </table>
+  <p style="margin-top:20px;font-size:22px;color:var(--muted)">Without Instruction, you repeat yourself every session. Without Extension, you retype workflows. Without Orchestration, you cannot parallelize.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 6: Block 1 exercises -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 1 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item">Label each of the 4 layers in your own words</div>
+  <div class="check-item">Write one sentence about what each layer does</div>
+  <div class="check-item">Draw the stack on paper from memory</div>
+  <p style="margin:20px 0 16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Name one failure mode if each layer is missing</div>
+  <div class="check-item">Identify which layer most teams skip entirely</div>
+  <div class="check-item">Explain why "prompts suggest, hooks guarantee"</div>
+  <p style="margin:20px 0 16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Map two real projects to the architecture</div>
+  <div class="check-item">Identify gaps in each project's layer coverage</div>
+  <div class="check-item">Propose one concrete improvement per gap</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 7: Block 2 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">2</div>
+  <h1>Environment Setup</h1>
+  <p class="block-time">0:30 &ndash; 1:30 &middot; 60 minutes</p>
+  <p class="small" style="margin-top:16px">Install Claude Code, connect tools, scaffold the harness</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 8: Install script -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Installation</h2></div>
+  <span class="code-label bash">bash</span>
+  <pre><code># Install Claude Code globally
+npm install -g @anthropic-ai/claude-code
+
+# Launch once to authenticate
+claude
+
+# Verify installation
+claude --version
+claude /doctor
+
+# Install GitHub CLI (needed for PR workflow)
+brew install gh
+gh auth login
+
+# Add Playwright MCP server for browser automation
+claude mcp add playwright npx @playwright/mcp@latest
+
+# Create and initialize project
+mkdir fhnw-harness &amp;&amp; cd fhnw-harness
+git init
+claude /init</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 9: Verification -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Verification</h2></div>
+  <span class="code-label bash">bash</span>
+  <pre><code># Confirm MCP servers are registered
+claude mcp list
+
+# Confirm GitHub authentication
+gh auth status
+
+# Confirm harness scaffold exists
+ls .claude/</code></pre>
+  <table style="margin-top:24px">
+    <tr><th>Tool</th><th>Purpose</th><th>Layer</th></tr>
+    <tr><td><code>claude</code></td><td>The AI coding assistant CLI</td><td>Core</td></tr>
+    <tr><td><code>gh</code></td><td>GitHub CLI for PRs, issues, actions</td><td>Extension</td></tr>
+    <tr><td><code>MCP servers</code></td><td>External tool integrations</td><td>Extension</td></tr>
+    <tr><td><code>.claude/</code></td><td>Harness config directory</td><td>Instruction</td></tr>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 10: Block 2 exercises Junior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 2 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item"><code>claude --version</code> returns a version number</div>
+  <div class="check-item"><code>claude mcp list</code> shows Playwright server</div>
+  <div class="check-item"><code>gh auth status</code> shows you are logged in</div>
+  <div class="check-item"><code>.claude/</code> directory exists in the project</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 11: Block 2 exercises Mid+Senior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 2 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Add the GitHub MCP server alongside Playwright</div>
+  <div class="check-item">Open <code>.mcp.json</code> and understand the server schema</div>
+  <div class="check-item">Call one MCP tool from within a Claude session</div>
+  <div class="check-item">Explain project-scope vs user-scope MCP config</div>
+  <p style="margin:24px 0 16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Set up git worktrees for parallel Claude sessions</div>
+  <div class="check-item">Run two Claude sessions simultaneously in separate worktrees</div>
+  <div class="check-item">Wire a real-work MCP server (database, API, or custom)</div>
+  <div class="check-item">Verify worktree isolation &mdash; changes in one do not leak</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 12: Block 3 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">3</div>
+  <h1>CLAUDE.md, Memory &amp; Context</h1>
+  <p class="block-time">1:30 &ndash; 2:30 &middot; 60 minutes</p>
+  <p class="small" style="margin-top:16px">Every time you tell Claude the same thing twice, that belongs in CLAUDE.md</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 13: CLAUDE.md template -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>CLAUDE.md Starter Template</h2></div>
+  <span class="code-label md">CLAUDE.md</span>
+  <pre><code># FHNW Harness Project
+
+## Stack
+- Runtime: Node 20 LTS
+- Test: Vitest
+- Lint: ESLint 9 flat config
+- Language: TypeScript strict
+
+## Conventions
+- All source lives in src/
+- Tests next to source: foo.test.ts
+- Named exports only (no default exports)
+- Commit style: conventional commits (feat/fix/chore)
+
+## Commands
+- Test: npm test
+- Lint: npm run lint
+- Build: npm run build
+
+## Quality Rules
+- Never skip tests
+- Every PR needs at least one test
+- Read before editing &mdash; verify assumptions first
+- No console.log in production code</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 14: Context commands -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Context Commands</h2></div>
+  <table>
+    <tr><th>Command</th><th>What It Does</th><th>When to Use</th></tr>
+    <tr><td><code>/cost</code></td><td>Show current session token usage</td><td>Before expensive operations</td></tr>
+    <tr><td><code>/compact</code></td><td>Compress context, keep key facts</td><td>Context getting long</td></tr>
+    <tr><td><code>/clear</code></td><td>Reset entire context to zero</td><td>Starting a new task</td></tr>
+    <tr><td><code>Esc Esc</code></td><td>Interrupt mid-generation</td><td>Claude going off track</td></tr>
+    <tr><td><code>/btw</code></td><td>Side-channel note, no derail</td><td>Recording preferences mid-task</td></tr>
+  </table>
+  <table style="margin-top:20px">
+    <tr><th>File</th><th>Scope</th><th>Committed?</th></tr>
+    <tr><td><code>CLAUDE.md</code></td><td>Everyone on the project</td><td>Yes</td></tr>
+    <tr><td><code>CLAUDE.local.md</code></td><td>Just you (gitignored)</td><td>No</td></tr>
+    <tr><td><code>.claude/rules/*.md</code></td><td>Scoped by file path globs</td><td>Yes</td></tr>
+    <tr><td><code>~/.claude/CLAUDE.md</code></td><td>All your projects globally</td><td>No</td></tr>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 15: Block 3 exercises Junior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 3 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item">CLAUDE.md file exists in project root</div>
+  <div class="check-item">Explain the difference between <code>/compact</code> and <code>/clear</code></div>
+  <div class="check-item">Trigger auto memory by teaching Claude a preference</div>
+  <div class="check-item">Use <code>Esc Esc</code> to interrupt a generation mid-stream</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 16: Block 3 exercises Mid+Senior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 3 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Create <code>CLAUDE.local.md</code> with personal overrides</div>
+  <div class="check-item">Add a file in <code>.claude/rules/</code> with YAML frontmatter path globs</div>
+  <div class="check-item">Use the Document &amp; Clear workflow for a multi-step task</div>
+  <div class="check-item">Set <code>/effort high</code> and observe the difference</div>
+  <p style="margin:24px 0 16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Build full rules structure: project, local, rules directory</div>
+  <div class="check-item">Create a MEMORY.md starter with index entries</div>
+  <div class="check-item">Use <code>/compact</code> with a focus phrase to steer preservation</div>
+  <div class="check-item">Demonstrate how rules scoping targets different file types</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 17: Block 4 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">4</div>
+  <h1>Hooks, Pre-commit &amp; TDD</h1>
+  <p class="block-time">2:30 &ndash; 3:30 &middot; 60 minutes</p>
+  <p class="small" style="margin-top:16px">Hooks are the only way to get 100% enforcement</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 18: Hooks vs Prompts -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Hooks vs Prompts</h2></div>
+  <table>
+    <tr><th>Dimension</th><th>Hook</th><th>Prompt (CLAUDE.md)</th></tr>
+    <tr><td>Guarantee</td><td>100% &mdash; runs every time</td><td>~90% &mdash; probabilistic</td></tr>
+    <tr><td>Best for</td><td>Security, policy, gates</td><td>Style, conventions</td></tr>
+    <tr><td>Blocking</td><td><code>exit 2</code> blocks the tool call</td><td>Cannot block</td></tr>
+    <tr><td>Feedback</td><td>JSON on stdout to Claude</td><td>Read at session start</td></tr>
+  </table>
+  <div class="callout critical" style="margin-top:24px">CRITICAL: <code>exit 1</code> does NOT block &mdash; it is treated as a hook error.<br><code>exit 2</code> is the ONLY way to deny a tool call.</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 19: block-secrets.sh -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Hook: block-secrets.sh</h2></div>
+  <span class="code-label bash">bash</span>
+  <pre><code>#!/bin/bash
+# PostToolUse hook &mdash; block secret leaks in file writes
+INPUT=$(cat &lt;/dev/stdin)
+CONTENT=$(echo "$INPUT" | jq -r '.tool_input.content // .tool_input.command // ""')
+
+# Check for AWS keys or OpenAI-style API keys
+if echo "$CONTENT" | grep -qiE '(AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{40,})'; then
+  echo '{"decision":"block","reason":"Secret pattern detected in output"}'
+  exit 2
+fi
+
+echo '{"decision":"allow"}'
+exit 0</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 20: quality-gate.sh -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Hook: quality-gate.sh</h2></div>
+  <span class="code-label bash">bash</span>
+  <pre><code>#!/bin/bash
+# PreToolUse hook &mdash; require tests pass before any commit
+INPUT=$(cat &lt;/dev/stdin)
+TOOL=$(echo "$INPUT" | jq -r '.tool_name')
+
+if [ "$TOOL" = "Bash" ]; then
+  CMD=$(echo "$INPUT" | jq -r '.tool_input.command')
+  if echo "$CMD" | grep -q "git commit"; then
+    # Run tests and check for pass
+    if ! npm test 2&gt;&amp;1 | tail -1 | grep -q "passed"; then
+      echo '{"decision":"block","reason":"Tests must pass before commit"}'
+      exit 2
+    fi
+  fi
+fi
+
+echo '{"decision":"allow"}'
+exit 0</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 21: Hook wiring -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Hook Wiring: settings.json</h2></div>
+  <span class="code-label json">json</span>
+  <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": { "tool_name": "Bash" },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/block-secrets.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": { "tool_name": "Bash" },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/quality-gate.sh"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 22: TDD flow -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>TDD Flow with Claude</h2></div>
+  <div class="steps">
+    <div class="step-item"><span><strong>Red</strong> &mdash; Write a failing test that describes the desired behavior</span></div>
+    <div class="step-item"><span><strong>Green</strong> &mdash; Ask Claude to make the test pass (and only that test)</span></div>
+    <div class="step-item"><span><strong>Refactor</strong> &mdash; Review the implementation and clean up</span></div>
+    <div class="step-item"><span><strong>Next</strong> &mdash; Repeat for the next behavior</span></div>
+  </div>
+  <div class="callout" style="margin-top:20px">TDD with Claude works best when you write the test and let Claude write the implementation. You define WHAT, Claude figures out HOW.</div>
+  <span class="code-label md">prompt</span>
+  <pre style="font-size:17px"><code>I wrote this failing test in src/utils.test.ts:
+
+  test('slugify converts spaces to hyphens', () =&gt; {
+    expect(slugify('hello world')).toBe('hello-world');
+  });
+
+Make the test pass. Only implement what the test requires.</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 23: Block 4 exercises -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 4 Exercises</h2></div>
+  <div class="slide-scroll">
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item">Both hook files exist and are executable (<code>chmod +x</code>)</div>
+  <div class="check-item">Hooks are wired in <code>.claude/settings.json</code></div>
+  <div class="check-item">Demo: hook blocks a fake secret string</div>
+  <div class="check-item">Complete one full TDD cycle (red-green-refactor)</div>
+  <p style="margin:20px 0 16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Write an <code>auto-lint.sh</code> PostToolUse hook that runs ESLint after file edits</div>
+  <div class="check-item">Build a PermissionDenied logger hook</div>
+  <div class="check-item">Complete 3 consecutive TDD cycles building a real utility</div>
+  <p style="margin:20px 0 16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Build a hook matrix: Pre/Post across Bash, Write, Edit tool types</div>
+  <div class="check-item">Create a pre-push validation hook</div>
+  <div class="check-item">Teach a Junior participant how hooks work</div>
+  <div class="check-item">Implement a business-rule enforcement hook</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 24: Block 5 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">5</div>
+  <h1>Commands, Skills &amp; GitHub CLI</h1>
+  <p class="block-time">3:30 &ndash; 4:30 &middot; 60 minutes</p>
+  <p class="small" style="margin-top:16px">If you type the same multi-step instructions twice, wrap it in a command</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 25: /pr command -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Command: /pr</h2><span class="tag">.claude/commands/pr.md</span></div>
+  <span class="code-label md">markdown</span>
+  <pre><code># /pr &mdash; Create a pull request
+
+Follow these steps in order:
+
+1. Run all tests: `npm test`
+2. If tests fail, stop and report the failures
+3. Summarize changes in 2-3 bullet points
+4. Create PR: `gh pr create --fill`
+5. Post the PR URL as your final output</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 26: /review + /catchup -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Commands: /review + /catchup</h2></div>
+  <div class="slide-scroll">
+  <span class="code-label md">markdown</span>
+  <pre style="font-size:17px"><code># /review &mdash; Code review current changes
+
+Review the current diff for quality issues:
+
+1. Run `git diff` to see all staged and unstaged changes
+2. Check every changed file for:
+   - Security issues (hardcoded secrets, injection vectors)
+   - Missing tests for new logic
+   - Style violations per CLAUDE.md conventions
+3. Rate the changes: Ship / Needs Work / Block
+4. List specific findings with file:line references</code></pre>
+  <span class="code-label md">markdown</span>
+  <pre style="font-size:17px"><code># /catchup &mdash; Rebuild context after a break
+
+Quickly rebuild situational awareness:
+
+1. Read CLAUDE.md and all .claude/rules/ files
+2. Check `git log --oneline -10` for recent work
+3. Scan for open TODO and FIXME comments in src/
+4. Summarize the current project state in 3 bullets
+5. Suggest what to work on next</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 27: Reviewer SKILL.md -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Skill: Reviewer</h2><span class="tag">.claude/skills/reviewer/SKILL.md</span></div>
+  <span class="code-label yaml">yaml+md</span>
+  <pre><code>---
+name: reviewer
+trigger: /review
+description: Code review with structured output
+context: fork
+---
+
+# Reviewer Skill
+
+You are a strict code reviewer. For every review:
+
+1. Read the diff with `git diff HEAD~1`
+2. Check each changed file for:
+   - Security: hardcoded secrets, injection, auth gaps
+   - Quality: missing error handling, untested paths
+   - Style: naming, structure, conventions from CLAUDE.md
+3. Output a verdict: SHIP / NEEDS_WORK / BLOCK
+4. List all findings as `file:line &mdash; issue description`
+5. If BLOCK, explain what must change before shipping</code></pre>
+  <table style="margin-top:16px;font-size:20px">
+    <tr><th>Aspect</th><th>Command</th><th>Skill</th></tr>
+    <tr><td>Activation</td><td>Explicit <code>/name</code></td><td>Auto-trigger</td></tr>
+    <tr><td>Context</td><td>Shares main session</td><td>Can fork (<code>context:fork</code>)</td></tr>
+    <tr><td>Location</td><td><code>.claude/commands/</code></td><td><code>.claude/skills/</code></td></tr>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 28: Block 5 exercises -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 5 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item">All 3 commands (/pr, /review, /catchup) work when invoked</div>
+  <div class="check-item">Skill auto-activates when its trigger is mentioned</div>
+  <div class="check-item">Successfully create a PR using <code>gh pr create</code></div>
+  <p style="margin:20px 0 16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Build a <code>/plan</code> command that uses <code>$ARGUMENTS</code> for task input</div>
+  <div class="check-item">Build a <code>/migration</code> command with <code>context:fork</code> isolation</div>
+  <div class="check-item">Create a TDD Writer skill that generates tests from function signatures</div>
+  <p style="margin:20px 0 16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Build a plugin skeleton with 3+ coordinated skills</div>
+  <div class="check-item">Create a skill library that others in the group can import</div>
+  <div class="check-item">Demo <code>context:fork</code> isolation &mdash; show the boundary</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 29: Block 6 header -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <div class="block-num">6</div>
+  <h1>Subagents, CI &amp; Ship</h1>
+  <p class="block-time">4:30 &ndash; 6:00 &middot; 90 minutes</p>
+  <p class="small" style="margin-top:16px">The top layer: orchestrate, integrate, ship</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 30: Ship Protocol -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Ship Protocol</h2></div>
+  <div class="steps">
+    <div class="step-item"><span><strong>Explore</strong> &mdash; Read relevant code, understand current state</span></div>
+    <div class="step-item"><span><strong>Plan</strong> &mdash; Outline intended changes before writing code</span></div>
+    <div class="step-item"><span><strong>Implement</strong> &mdash; Write code and tests in TDD cycles</span></div>
+    <div class="step-item"><span><strong>Commit</strong> &mdash; Conventional commit, all hooks must pass</span></div>
+    <div class="step-item"><span><strong>PR</strong> &mdash; Create pull request, verify CI green, request review</span></div>
+  </div>
+  <table style="margin-top:20px">
+    <tr><th>Pattern</th><th>Use Case</th><th>Context</th></tr>
+    <tr><td>Explore agent</td><td>Read-only recon of a codebase area</td><td>Forked (isolated)</td></tr>
+    <tr><td>Task agent</td><td>Implement a bounded task</td><td>Forked</td></tr>
+    <tr><td>Review agent</td><td>Review changes from another agent</td><td>Forked</td></tr>
+    <tr><td>Parallel worktrees</td><td>Multiple agents, different branches</td><td>Fully isolated</td></tr>
+  </table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 31: Ship Protocol detail + worktrees -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Worktree Setup for Parallel Agents</h2></div>
+  <span class="code-label bash">bash</span>
+  <pre><code># Create a worktree for a feature branch
+git worktree add ../fhnw-feat-auth -b feat/auth
+
+# Start a Claude session in the worktree
+cd ../fhnw-feat-auth
+claude --session-name "auth-feature"
+
+# Meanwhile, in the main worktree, start another session
+cd ../fhnw-harness
+claude --session-name "main-refactor"
+
+# List active worktrees
+git worktree list
+
+# Clean up when done
+git worktree remove ../fhnw-feat-auth</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 32: Block 6 exercises Junior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 6 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-j">Junior</span></p>
+  <div class="check-item">Complete the full ship protocol once (all 5 steps)</div>
+  <div class="check-item">Verify that a hook blocked a bad commit attempt</div>
+  <div class="check-item">PR is opened and visible on GitHub</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 33: Block 6 exercises Mid -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 6 Exercises</h2></div>
+  <p style="margin-bottom:16px"><span class="badge badge-m">Mid</span></p>
+  <div class="check-item">Complete the full ship protocol independently (no facilitator help)</div>
+  <div class="check-item">Launch an Explore subagent to read a code area</div>
+  <div class="check-item">Run parallel Claude sessions using git worktrees</div>
+  <div class="check-item">Use meaningful session naming for traceability</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 34: Block 6 exercises Senior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Block 6 Exercises</h2></div>
+  <div class="slide-scroll">
+  <p style="margin-bottom:16px"><span class="badge badge-s">Senior</span></p>
+  <div class="check-item">Create a GitHub Actions workflow for automated <code>@claude</code> review</div>
+  <div class="check-item">Build a security-focused subagent that scans PRs</div>
+  <div class="check-item">Run Claude Code in headless CI mode</div>
+  <span class="code-label yaml" style="margin-top:20px">yaml</span>
+  <pre style="font-size:16px"><code>name: Claude Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this PR for:
+            - Security vulnerabilities
+            - Missing test coverage
+            - Style violations
+            Post findings as review comments.</code></pre>
+  <span class="code-label bash">bash</span>
+  <pre style="font-size:16px"><code># Run Claude in headless mode (no interactive terminal)
+claude --headless --prompt "Run tests and report results"
+
+# With specific output format
+claude --headless \
+  --prompt "Review src/ for security issues" \
+  --output-format json</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 35: Reference Card A — Junior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Reference Card A</h2><span class="tag">Junior</span></div>
+  <div class="ref-card junior">
+<pre><code>INSTALL &amp; VERIFY
+  npm i -g @anthropic-ai/claude-code
+  claude --version
+  claude /doctor
+  claude mcp list
+
+SESSION CONTROLS
+  /cost      show token usage
+  /compact   compress context
+  /clear     full context reset
+  Esc Esc    interrupt generation
+  /btw       side note (no derail)
+
+KEY WORKFLOW (TDD)
+  1. Write a failing test
+  2. Ask Claude to make it pass
+  3. Review the implementation
+  4. Refactor if needed
+  5. Commit (hooks must pass)
+  6. gh pr create
+
+FILES TO KNOW
+  CLAUDE.md              project rules
+  .claude/settings.json  hook config
+  .claude/commands/      custom commands
+  .claude/hooks/         hook scripts
+  .mcp.json              MCP servers
+
+TROUBLESHOOTING
+  claude /doctor     health check
+  claude mcp list    verify servers
+  gh auth status     verify GitHub
+  ls .claude/        verify scaffold</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 36: Reference Card B — Mid -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Reference Card B</h2><span class="tag">Mid-Level</span></div>
+  <div class="ref-card mid">
+<pre><code>CLAUDE.MD HIERARCHY
+  CLAUDE.md            project (committed)
+  CLAUDE.local.md      personal (gitignored)
+  .claude/rules/*.md   path-scoped rules
+  ~/.claude/CLAUDE.md  global (all repos)
+
+HOOKS &mdash; EXIT CODES
+  exit 0   allow the tool call
+  exit 1   hook error (NOT a block!)
+  exit 2   BLOCK the tool call
+  stdout   JSON feedback to Claude
+
+HOOK TYPES
+  PreToolUse     before the tool runs
+  PostToolUse    after the tool runs
+  SessionStart   when session begins
+  SessionEnd     when session ends
+
+HOOK JSON INPUT (stdin)
+  .tool_name          which tool
+  .tool_input.command Bash command
+  .tool_input.content file content
+
+CONTEXT HYGIENE
+  /compact "focus phrase"
+  /effort high
+  Document &amp; Clear workflow
+  /btw for side-channel notes
+  /cost before expensive ops
+
+COMMANDS VS SKILLS
+  Commands: explicit /name invoke
+  Skills: auto-trigger on keywords
+  Skills can fork context</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 37: Reference Card C — Senior -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Reference Card C</h2><span class="tag">Senior</span></div>
+  <div class="ref-card senior">
+<pre><code>SUBAGENTS
+  context:fork    isolated context
+  Task()          dispatch subagent
+  Explore agent   read-only recon
+  Parallel agents via worktrees
+  Session naming  for traceability
+
+STOP REASONS
+  end_turn        normal completion
+  max_tokens      context exhausted
+  stop_sequence   custom stop trigger
+
+TOOL DESCRIPTIONS
+  name + description drive selection
+  matcher patterns in settings.json
+  tool_name filtering for hooks
+
+CI HEADLESS
+  claude --headless --prompt "..."
+  ANTHROPIC_API_KEY in secrets
+  anthropics/claude-code-action@v1
+  --output-format json for parsing
+
+SHIP PROTOCOL
+  Explore &gt; Plan &gt; Implement
+  &gt; Commit &gt; PR
+  Every step has a gate
+
+GIT WORKTREES
+  git worktree add ../feat-x main
+  cd ../feat-x &amp;&amp; claude
+  Full isolation between agents
+  Each worktree = own .claude/</code></pre>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 38: TDD Prompt Example (full) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>TDD Prompt Example</h2><span class="tag">Full version</span></div>
+  <span class="code-label md">prompt</span>
+  <pre><code>I wrote this failing test in src/utils.test.ts:
+
+  test('slugify converts spaces to hyphens', () =&gt; {
+    expect(slugify('hello world')).toBe('hello-world');
+  });
+
+  test('slugify lowercases input', () =&gt; {
+    expect(slugify('Hello World')).toBe('hello-world');
+  });
+
+  test('slugify strips special characters', () =&gt; {
+    expect(slugify('hello! @world#')).toBe('hello-world');
+  });
+
+Make these tests pass. Only implement what the tests require,
+nothing more. Put the function in src/utils.ts.</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 39: Key Takeaways -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide">
+  <div class="slide-header"><h2>Key Takeaways</h2></div>
+  <div class="cards-row">
+    <div class="card-item" style="border-top:3px solid var(--blue)">
+      <h3>Layer Up</h3>
+      <p>Every missing layer is a ceiling on productivity. Build upward.</p>
+    </div>
+    <div class="card-item" style="border-top:3px solid var(--cyan)">
+      <h3>Hooks Guarantee</h3>
+      <p>Prompts suggest. Hooks enforce. Use <code>exit 2</code> to block.</p>
+    </div>
+    <div class="card-item" style="border-top:3px solid var(--purple)">
+      <h3>Encode Workflows</h3>
+      <p>If you type it twice, make it a command. If it should always run, make it a skill.</p>
+    </div>
+    <div class="card-item" style="border-top:3px solid var(--junior)">
+      <h3>Ship Protocol</h3>
+      <p>Explore, Plan, Implement, Commit, PR. Every step has a gate.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 40: Closing -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="slide slide-title">
+  <p class="closing-quote">Go build something.<br>Your harness is ready.</p>
+  <div style="margin-top:40px">
+    <p class="small">Claude Code Docs: <code>https://docs.anthropic.com/en/docs/claude-code</code></p>
+    <p class="small">GitHub CLI: <code>https://cli.github.com</code></p>
+    <p class="small">MCP Specification: <code>https://modelcontextprotocol.io</code></p>
+  </div>
+</section>
+
+</div><!-- /deck -->
+
+<!-- ════════════════════ JAVASCRIPT ════════════════════ -->
+<script>
+(function() {
+  var slides = document.querySelectorAll('.slide');
+  var current = 0;
+  var total = slides.length;
+
+  function goTo(n) {
+    if (n < 0 || n >= total) return;
+    if (document.body.classList.contains('overview')) {
+      document.body.classList.remove('overview');
+    }
+    slides[current].classList.remove('active');
+    slides[n].classList.add('active');
+    current = n;
+    updateCounter();
+    updateProgress();
+  }
+
+  function next() { goTo(current + 1); }
+  function prev() { goTo(current - 1); }
+
+  function updateCounter() {
+    document.querySelector('.counter').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function updateProgress() {
+    var pct = ((current + 1) / total) * 100;
+    document.querySelector('.progress-bar').style.width = pct + '%';
+  }
+
+  function toggleOverview() {
+    document.body.classList.toggle('overview');
+  }
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Escape') { e.preventDefault(); toggleOverview(); }
+    if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+    if (e.key === 'End') { e.preventDefault(); goTo(total - 1); }
+  });
+
+  // Click navigation (left half = prev, right half = next)
+  document.addEventListener('click', function(e) {
+    // In overview mode, click a slide to jump to it
+    if (document.body.classList.contains('overview')) {
+      var slide = e.target.closest('.slide');
+      if (slide) {
+        var idx = Array.prototype.indexOf.call(slides, slide);
+        if (idx >= 0) goTo(idx);
+      }
+      return;
+    }
+    // Skip clicks on code/pre/interactive elements
+    if (e.target.closest('pre') || e.target.closest('code') || e.target.closest('a')) return;
+    if (e.clientX < window.innerWidth / 2) prev();
+    else next();
+  });
+
+  // Touch/swipe navigation
+  var touchStartX = 0;
+  var touchStartY = 0;
+  document.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    var dx = e.changedTouches[0].screenX - touchStartX;
+    var dy = e.changedTouches[0].screenY - touchStartY;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    if (dx < 0) next();
+    else prev();
+  }, { passive: true });
+
+  // Initialize
+  updateCounter();
+  updateProgress();
+})();
+</script>
+</body>
+</html>
